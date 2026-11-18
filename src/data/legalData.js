@@ -13,7 +13,7 @@ export const LEGAL_POLICIES = {
       {
         number: '01',
         heading: 'Commercial Scope & Agreement to Terms',
-        content: `These Commercial Terms of Wholesale Supply ("Terms") constitute a legally binding agreement between Malabar Prime Distributions ("Distributor", "Company", "We", "Us"), operating from ${COMPANY_INFO.address}, holding FSSAI License No. ${COMPANY_INFO.fssaiNumber} and GSTIN ${COMPANY_INFO.gstNumber}, and the purchasing retail entity, supermarket chain, hypermarket, or commercial kitchen ("Buyer", "Partner", "You"). 
+        content: `These Commercial Terms of Wholesale Supply ("Terms") constitute a legally binding agreement between Malabar Prime Distributions ("Distributor", "Company", "We", "Us"), operating from ${COMPANY_INFO.address || 'Central Master Depot'}, holding FSSAI License No. ${COMPANY_INFO.fssaiNumber || 'Not Available'} and GSTIN ${COMPANY_INFO.gstNumber || 'Not Available'}, and the purchasing retail entity, supermarket chain, hypermarket, or commercial kitchen ("Buyer", "Partner", "You"). 
 
 By placing a Purchase Order (PO), submitting a digital Request for Quotation (RFQ), accepting a consignment, or signing a distribution agreement, the Buyer unconditionally agrees to be bound by these Terms to the exclusion of any conflicting buyer terms.`
       },
@@ -247,12 +247,12 @@ We maintain a strict Non-Disclosure Policy:
     badge: 'REGULATORY CERTIFICATIONS',
     effectiveDate: 'November 1, 2024',
     lastUpdated: 'November 16, 2026',
-    description: 'Our complete statutory certifications, legal metrology registrations, FSSAI license parameters, and ISO 22000:2018 quality governance standards.',
+    description: 'Our complete statutory certifications, legal metrology registrations, FSSAI license parameters, and quality governance standards.',
     sections: [
       {
         number: '01',
         heading: 'Food Safety and Standards Authority of India (FSSAI)',
-        content: `Malabar Prime Distributions operates strictly under valid Central / State FSSAI License No. ${COMPANY_INFO.fssaiNumber} under the Food Safety and Standards Act, 2006. 
+        content: `Malabar Prime Distributions operates strictly under valid Central / State FSSAI licensing under the Food Safety and Standards Act, 2006 (License: ${COMPANY_INFO.fssaiNumber || 'Not Available'}). 
 
 Our operations strictly enforce:
 1. Inward lot spectrometry and visual hygiene testing on every arriving manufacturer shipment.
@@ -262,14 +262,14 @@ Our operations strictly enforce:
       {
         number: '02',
         heading: 'Goods and Services Tax (GST) & E-Way Bill Compliance',
-        content: `Operating under GSTIN ${COMPANY_INFO.gstNumber}, our accounting engine provides 100% statutory input tax credit (ITC) compliance for retail supermarket accounts:
+        content: `Operating under verified GST registration (GSTIN: ${COMPANY_INFO.gstNumber || 'Not Available'}), our accounting engine provides 100% statutory input tax credit (ITC) compliance for retail supermarket accounts:
 1. Every delivery carries an invoice with compliant HSN codes, correct CGST/SGST/IGST breakdown, and active E-Way Bill numbers.
 2. B2B invoices are uploaded to the GST portal in real-time, ensuring seamless GSTR-2B reflection for your monthly tax filings.`
       },
       {
         number: '03',
-        heading: 'ISO 22000:2018 & HACCP Cold Chain Management',
-        content: `Our central logistics facilities maintain ISO 22000:2018 Food Safety Management System certification. We adhere to Hazard Analysis Critical Control Point (HACCP) standards across storage, pallet wrapping, cold-chain temperature monitoring, and dispatch verification.`
+        heading: 'Food Safety & HACCP Cold Chain Management',
+        content: `Our central logistics facilities maintain certified Food Safety Management System standards. We adhere to Hazard Analysis Critical Control Point (HACCP) standards across storage, pallet wrapping, cold-chain temperature monitoring, and dispatch verification.`
       },
       {
         number: '04',

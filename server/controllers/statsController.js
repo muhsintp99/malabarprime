@@ -13,6 +13,7 @@ export const statsController = {
       totalProducts: (db.products || []).length,
       totalCategories: (db.categories || []).length,
       totalBrands: (db.brands || []).length,
+      totalWarehouses: (db.warehouses || []).length,
       fssaiNumber: db.assurance?.fssaiNumber,
       gstNumber: db.assurance?.gstNumber
     };

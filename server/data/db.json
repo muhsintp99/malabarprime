@@ -6,12 +6,12 @@
     "role": "Super Administrator"
   },
   "assurance": {
-    "fssaiNumber": "11322001000845",
-    "gstNumber": "32AAECM4912L1ZT",
-    "isoCert": "ISO 22000:2018",
-    "coldChainCompliance": "HACCP & ISO 22000:2018 Certified Cold Chain (2°C - 8°C & -18°C Deep Freeze)",
-    "legalMetrology": "100% Barcoded & MRP Compliant Packaged Goods Under Legal Metrology Act",
-    "labTesting": "Inward Spectrometry & Moisture Level Testing on Every Lot",
+    "fssaiNumber": "",
+    "gstNumber": "",
+    "isoCert": "",
+    "coldChainCompliance": "",
+    "legalMetrology": "",
+    "labTesting": "",
     "certifications": []
   },
   "enquiries": [],
@@ -46,15 +46,16 @@
   "brands": [],
   "products": [],
   "companyContact": {
-    "contact": "Central Trade Desk Director",
-    "whatsapp": "+91 98470 12345",
-    "call": "+91 98470 12345",
-    "emergensy": "+91 94470 99999",
-    "email": "wholesale@malabarprime.com",
-    "supportEmail": "support@malabarprime.com",
-    "location": "Kozhikode, Kerala (NH-66 Logistics Hub)",
-    "adress": "Central Distribution Hub, NH-66 Logistics Corridor, Ramanattukara, Kozhikode, Kerala 673633",
-    "workingHours": "Mon - Sat: 8:00 AM - 9:00 PM (24/7 Cold Chain Telemetry Dispatch)"
+    "contact": "+91 85938 56881",
+    "whatsapp": "+91 85938 56881",
+    "call": "+91 85938 56881",
+    "emergensy": "+91 85930 06881",
+    "email": "malabarprime.co@gmail.com",
+    "supportEmail": "malabarprime.co@gmail.com",
+    "location": "Mankada,  Malappuram",
+    "adress": "Mankada,  Malappuram",
+    "workingHours": "",
+    "updatedAt": "2026-11-17T23:52:37.560Z"
   },
   "policies": {
     "terms": {
@@ -228,17 +229,17 @@
         {
           "number": "01",
           "heading": "Food Safety and Standards Authority of India (FSSAI)",
-          "content": "We operate strictly under valid FSSAI Central/State License No. 11322001000845 enforcing inward lot spectrometry, segregated palletized warehousing, periodic pest control, and cold-chain logging."
+          "content": "We operate strictly under valid FSSAI Central/State statutory licensing enforcing inward lot spectrometry, segregated palletized warehousing, periodic pest control, and cold-chain logging."
         },
         {
           "number": "02",
           "heading": "Goods and Services Tax (GST) & E-Way Bill Compliance",
-          "content": "Operating under GSTIN 32AAECM4912L1ZT, our billing engine provides 100% input tax credit (ITC) compliance with automated HSN itemization and E-Way bills uploaded directly to the GST portal."
+          "content": "Operating under verified GST registration, our billing engine provides 100% input tax credit (ITC) compliance with automated HSN itemization and E-Way bills uploaded directly to the GST portal."
         },
         {
           "number": "03",
-          "heading": "ISO 22000:2018 & HACCP Quality Management",
-          "content": "Our logistics infrastructure maintains ISO 22000:2018 certification and HACCP food hygiene protocols across handling, pallet wrapping, temperature monitoring, and vehicle dispatch."
+          "heading": "Food Safety & Quality Management",
+          "content": "Our logistics infrastructure maintains certified food safety and HACCP food hygiene protocols across handling, pallet wrapping, temperature monitoring, and vehicle dispatch."
         },
         {
           "number": "04",
@@ -247,5 +248,59 @@
         }
       ]
     }
-  }
+  },
+  "warehouses": [
+    {
+      "id": "wh-kozhikode",
+      "name": "Kozhikode Central Mega Depot (HQ)",
+      "city": "Kozhikode, Kerala",
+      "capacity": "22,000 Sq. Ft.",
+      "features": [
+        "Multi-tier dry pallet racking",
+        "Automated inventory WMS",
+        "Direct NH-66 highway access"
+      ],
+      "coverage": "Kozhikode, Malappuram, Wayanad",
+      "dispatchTime": "Same-Day / Next-Day Delivery"
+    },
+    {
+      "id": "wh-kochi",
+      "name": "Kochi Reefer & Cold Chain Depot",
+      "city": "Aluva, Ernakulam, Kerala",
+      "capacity": "12,000 Sq. Ft.",
+      "features": [
+        "-18°C to +4°C cold rooms",
+        "Temperature logging telemetry",
+        "FMCG Modern Trade cross-dock"
+      ],
+      "coverage": "Ernakulam, Thrissur, Kottayam, Alappuzha",
+      "dispatchTime": "24-Hour Express Fulfillment"
+    },
+    {
+      "id": "wh-kannur",
+      "name": "Kannur Northern Regional Hub",
+      "city": "Kannur, Kerala",
+      "capacity": "8,000 Sq. Ft.",
+      "features": [
+        "Fast-moving consumer goods transit",
+        "Dedicated spice & grain quarantine",
+        "Local fleet depot"
+      ],
+      "coverage": "Kannur, Kasaragod, Coorg border",
+      "dispatchTime": "Scheduled Alternate-Day Delivery"
+    },
+    {
+      "id": "wh-coimbatore",
+      "name": "Coimbatore Interstate Transit Hub",
+      "city": "Coimbatore, Tamil Nadu",
+      "capacity": "9,500 Sq. Ft.",
+      "features": [
+        "Interstate manufacturer receiving",
+        "Pallet consolidation hub",
+        "Bulk freight handling"
+      ],
+      "coverage": "Palakkad, Coimbatore, Tirupur, Nilgiris",
+      "dispatchTime": "Next-Day Interstate Cross-Dock"
+    }
+  ]
 }

@@ -2,14 +2,14 @@ export const COMPANY_INFO = {
   name: 'Malabar Prime Distributions',
   tagline: 'Premier FMCG, Grocery & Food Distribution Network',
   subtext: 'Connecting 30+ leading consumer brands with 1,450+ supermarkets, grocery stores, and institutional kitchens across Kerala, Karnataka, and Tamil Nadu.',
-  phone: '+91 98470 12345',
-  whatsapp: '919847012345',
-  email: 'wholesale@malabarprime.com',
-  salesEmail: 'orders@malabarprime.com',
-  address: 'Central Distribution Hub, NH-66 Logistics Corridor, Ramanattukara, Kozhikode, Kerala 673633',
-  fssaiNumber: '11322001000845',
-  gstNumber: '32AAECM4912L1ZT',
-  isoCert: 'ISO 22000:2018 Certified',
+  phone: '',
+  whatsapp: '',
+  email: '',
+  salesEmail: '',
+  address: '',
+  fssaiNumber: '',
+  gstNumber: '',
+  isoCert: '',
   established: '2012'
 };
 
@@ -24,6 +24,7 @@ export const DISTRIBUTION_STATS = [
 
 export const WAREHOUSE_HUBS = [
   {
+    id: 'wh-kozhikode',
     name: 'Kozhikode Central Mega Depot (HQ)',
     city: 'Kozhikode, Kerala',
     capacity: '22,000 Sq. Ft.',
@@ -32,6 +33,7 @@ export const WAREHOUSE_HUBS = [
     dispatchTime: 'Same-Day / Next-Day Delivery'
   },
   {
+    id: 'wh-kochi',
     name: 'Kochi Reefer & Cold Chain Depot',
     city: 'Aluva, Ernakulam, Kerala',
     capacity: '12,000 Sq. Ft.',
@@ -40,6 +42,7 @@ export const WAREHOUSE_HUBS = [
     dispatchTime: '24-Hour Express Fulfillment'
   },
   {
+    id: 'wh-kannur',
     name: 'Kannur Northern Regional Hub',
     city: 'Kannur, Kerala',
     capacity: '8,000 Sq. Ft.',
@@ -48,6 +51,7 @@ export const WAREHOUSE_HUBS = [
     dispatchTime: 'Scheduled Alternate-Day Delivery'
   },
   {
+    id: 'wh-coimbatore',
     name: 'Coimbatore Interstate Transit Hub',
     city: 'Coimbatore, Tamil Nadu',
     capacity: '9,500 Sq. Ft.',
@@ -89,12 +93,7 @@ export const LOGISTICS_WORKFLOW = [
   }
 ];
 
-export const CERTIFICATIONS = [
-  { name: 'FSSAI Central License', id: 'Lic. No. 11322001000845', desc: 'Food Safety and Standards Authority of India certified premises' },
-  { name: 'ISO 22000:2018', id: 'Certificate FSMS-99482', desc: 'International Food Safety Management System standard compliance' },
-  { name: 'Cold Chain Standard', id: 'HACCP Compliant', desc: 'Continuous cold storage and temperature data logging guarantee' },
-  { name: 'GST & Legal Metrology', id: 'GSTIN: 32AAECM4912L1ZT', desc: 'Compliant packaged commodities declaration and barcoding' }
-];
+export const CERTIFICATIONS = [];
 
 export const FAQS = [
   {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Building2, 
   Truck, 
@@ -8,11 +8,20 @@ import {
   CheckCircle,
   ArrowRight
 } from 'lucide-react';
-import { WAREHOUSE_HUBS, LOGISTICS_WORKFLOW } from '../data/distributionData';
+import { LOGISTICS_WORKFLOW } from '../data/distributionData';
+import { dataService } from '../services/dataService';
 import ScrollReveal from './ScrollReveal';
 import Magnetic from './Magnetic';
 
 export default function DistributionNetwork({ onOpenPartnerModal }) {
+  const [warehouses, setWarehouses] = useState(() => dataService.getWarehouses());
+
+  useEffect(() => {
+    const unsub = dataService.subscribe(() => {
+      setWarehouses(dataService.getWarehouses());
+    });
+    return unsub;
+  }, []);
   return (
     <section id="network" className="bg-[#F5F0E6] text-[#101010] border-b border-[#101010] py-20 w-full">
       <div className="w-full px-4 sm:px-8 lg:px-12">
@@ -34,60 +43,78 @@ export default function DistributionNetwork({ onOpenPartnerModal }) {
 
             <div className="flex items-center gap-2 self-start md:self-auto text-xs font-mono font-bold text-[#101010] bg-white border border-[#101010] px-4 py-2 rounded">
               <span className="w-2 h-2 rounded-full bg-[#D4AF37] border border-[#101010]"></span>
-              <span>4 REGIONAL DISTRIBUTION HUBS</span>
+              <span>{warehouses.length > 0 ? `${warehouses.length} REGIONAL DISTRIBUTION HUBS` : 'WAREHOUSING: NOT AVAILABLE'}</span>
             </div>
           </div>
         </ScrollReveal>
 
         {/* Warehouse Hubs Grid with Scroll Animations */}
-        <div className="grid md:grid-cols-2 gap-6 mb-16">
-          {WAREHOUSE_HUBS.map((hub, idx) => (
-            <ScrollReveal key={idx} delay={idx * 120} direction={idx % 2 === 0 ? "right" : "left"}>
-              <div className="bg-white border-2 border-[#101010] p-6 sm:p-7 space-y-4 hover:shadow-luxury transition-shadow h-full">
-                <div className="flex items-start justify-between">
+        {warehouses.length > 0 ? (
+          <div className="grid md:grid-cols-2 gap-6 mb-16">
+            {warehouses.map((hub, idx) => (
+              <ScrollReveal key={hub.id || idx} delay={idx * 120} direction={idx % 2 === 0 ? "right" : "left"}>
+                <div className="bg-white border-2 border-[#101010] p-6 sm:p-7 space-y-4 hover:shadow-luxury transition-shadow h-full flex flex-col justify-between">
                   <div>
-                    <div className="flex items-center gap-1.5 text-xs text-[#343434] font-mono font-bold uppercase mb-1">
-                      <MapPin className="w-3.5 h-3.5 text-[#D4AF37]" />
-                      <span>{hub.city}</span>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-1.5 text-xs text-[#343434] font-mono font-bold uppercase mb-1">
+                          <MapPin className="w-3.5 h-3.5 text-[#D4AF37]" />
+                          <span className={hub.city ? "" : "italic text-neutral-400"}>{hub.city || 'Not Available'}</span>
+                        </div>
+                        <h3 className="font-editorial text-xl font-bold text-[#101010]">
+                          {hub.name || 'Not Available'}
+                        </h3>
+                      </div>
+                      <span className="font-mono text-xs font-bold text-[#101010] bg-[#D4AF37]/30 border border-[#101010] px-3 py-1 rounded">
+                        {hub.capacity || 'Not Available'}
+                      </span>
                     </div>
-                    <h3 className="font-editorial text-xl font-bold text-[#101010]">
-                      {hub.name}
-                    </h3>
-                  </div>
-                  <span className="font-mono text-xs font-bold text-[#101010] bg-[#D4AF37]/30 border border-[#101010] px-3 py-1 rounded">
-                    {hub.capacity}
-                  </span>
-                </div>
 
-                {/* Hub Features */}
-                <div className="space-y-2 pt-1 font-medium">
-                  {hub.features.map((feature, fIdx) => (
-                    <div key={fIdx} className="flex items-center gap-2 text-xs text-[#343434]">
-                      <CheckCircle className="w-3.5 h-3.5 text-[#101010] flex-shrink-0" />
-                      <span>{feature}</span>
+                    {/* Hub Features */}
+                    {Array.isArray(hub.features) && hub.features.length > 0 && (
+                      <div className="space-y-2 pt-3 font-medium">
+                        {hub.features.map((feature, fIdx) => (
+                          <div key={fIdx} className="flex items-center gap-2 text-xs text-[#343434]">
+                            <CheckCircle className="w-3.5 h-3.5 text-[#101010] flex-shrink-0" />
+                            <span>{feature}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Coverage & Dispatch Time */}
+                  <div className="pt-4 border-t border-[#101010]/20 grid grid-cols-2 gap-3 text-xs font-mono mt-4">
+                    <div>
+                      <span className="text-[#343434] block text-[9px] uppercase font-bold">ROUTE COVERAGE</span>
+                      <span className={hub.coverage ? "font-bold text-[#101010]" : "italic text-neutral-400"}>
+                        {hub.coverage || 'Not Available'}
+                      </span>
                     </div>
-                  ))}
-                </div>
-
-                {/* Coverage & Dispatch Time */}
-                <div className="pt-4 border-t border-[#101010]/20 grid grid-cols-2 gap-3 text-xs font-mono">
-                  <div>
-                    <span className="text-[#343434] block text-[9px] uppercase font-bold">ROUTE COVERAGE</span>
-                    <span className="font-bold text-[#101010]">{hub.coverage}</span>
+                    <div>
+                      <span className="text-[#343434] block text-[9px] uppercase font-bold">DISPATCH SLA</span>
+                      <span className="font-bold text-[#101010] flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-[#D4AF37]" />
+                        <span className={hub.dispatchTime ? "" : "italic text-neutral-400"}>
+                          {hub.dispatchTime || 'Not Available'}
+                        </span>
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[#343434] block text-[9px] uppercase font-bold">DISPATCH SLA</span>
-                    <span className="font-bold text-[#101010] flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-[#D4AF37]" />
-                      {hub.dispatchTime}
-                    </span>
-                  </div>
-                </div>
 
-              </div>
-            </ScrollReveal>
-          ))}
-        </div>
+                </div>
+              </ScrollReveal>
+            ))}
+          </div>
+        ) : (
+          <div className="p-10 bg-white border-2 border-dashed border-[#101010]/40 rounded-xl text-center space-y-2 mb-16">
+            <Building2 className="w-10 h-10 text-[#D4AF37] mx-auto" />
+            <h4 className="font-editorial font-bold text-xl text-[#101010]">No Regional Warehouses Listed</h4>
+            <p className="text-xs text-[#343434]">
+              Regional dispatch hubs can be configured and managed directly from the Admin Warehousing Desk.
+            </p>
+          </div>
+        )}
 
         {/* Fulfillment Workflow Bar */}
         <div id="infrastructure" className="pt-12 border-t border-[#101010]">

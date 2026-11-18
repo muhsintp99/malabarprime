@@ -25,20 +25,23 @@ export default function Footer({ onOpenPartnerModal, onOpenCatalogModal, onNavig
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
   const [contactInfo, setContactInfo] = useState(() => dataService.getCompanyContact());
+  const [assurance, setAssurance] = useState(() => dataService.getAssurance());
 
   useEffect(() => {
     const unsub = dataService.subscribe(() => {
       setContactInfo(dataService.getCompanyContact());
+      setAssurance(dataService.getAssurance());
     });
     return unsub;
   }, []);
 
-  const activePhone = contactInfo?.call || COMPANY_INFO.phone;
-  const activeWhatsapp = (contactInfo?.whatsapp || COMPANY_INFO.whatsapp || '').replace(/[^0-9]/g, '');
-  const activeEmail = contactInfo?.email || COMPANY_INFO.salesEmail;
-  const activeAddress = contactInfo?.adress || COMPANY_INFO.address;
-  const activeEmergency = contactInfo?.emergensy || '+91 9747 888 231';
-  const activeSupportEmail = contactInfo?.supportEmail || 'support@malabarprime.com';
+  const activePhone = contactInfo?.call || contactInfo?.contact || null;
+  const rawWa = contactInfo?.whatsapp || '';
+  const activeWhatsapp = rawWa ? rawWa.replace(/[^0-9]/g, '') : null;
+  const activeEmail = contactInfo?.email || null;
+  const activeAddress = contactInfo?.adress || contactInfo?.location || null;
+  const activeEmergency = contactInfo?.emergensy || null;
+  const activeSupportEmail = contactInfo?.supportEmail || null;
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -292,54 +295,102 @@ export default function Footer({ onOpenPartnerModal, onOpenCatalogModal, onNavig
             </h4>
             
             <div className="space-y-2.5 text-xs font-medium">
-              <a 
-                href={`tel:${activePhone.replace(/\s+/g, '')}`} 
-                className="flex items-center gap-2.5 text-[#F5F0E6] hover:text-[#D4AF37] transition-colors group"
-              >
-                <div className="w-7 h-7 rounded bg-[#1e1e1e] border border-[#343434] group-hover:border-[#D4AF37] flex items-center justify-center flex-shrink-0">
-                  <Phone className="w-3.5 h-3.5 text-[#D4AF37]" />
+              {activePhone ? (
+                <a 
+                  href={`tel:${activePhone.replace(/\s+/g, '')}`} 
+                  className="flex items-center gap-2.5 text-[#F5F0E6] hover:text-[#D4AF37] transition-colors group"
+                >
+                  <div className="w-7 h-7 rounded bg-[#1e1e1e] border border-[#343434] group-hover:border-[#D4AF37] flex items-center justify-center flex-shrink-0">
+                    <Phone className="w-3.5 h-3.5 text-[#D4AF37]" />
+                  </div>
+                  <div>
+                    <span className="block text-[9px] font-mono text-[#F5F0E6]/50 uppercase">Order Hotline</span>
+                    <span className="font-mono font-bold">{activePhone}</span>
+                  </div>
+                </a>
+              ) : (
+                <div className="flex items-center gap-2.5 text-[#F5F0E6]/50">
+                  <div className="w-7 h-7 rounded bg-[#1e1e1e] border border-[#343434] flex items-center justify-center flex-shrink-0">
+                    <Phone className="w-3.5 h-3.5 text-neutral-500" />
+                  </div>
+                  <div>
+                    <span className="block text-[9px] font-mono text-[#F5F0E6]/40 uppercase">Order Hotline</span>
+                    <span className="font-mono italic text-neutral-400 text-xs">Not Available</span>
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[9px] font-mono text-[#F5F0E6]/50 uppercase">Order Hotline</span>
-                  <span className="font-mono font-bold">{activePhone}</span>
-                </div>
-              </a>
+              )}
 
-              <a 
-                href={`mailto:${activeEmail}`} 
-                className="flex items-center gap-2.5 text-[#F5F0E6] hover:text-[#D4AF37] transition-colors group"
-              >
-                <div className="w-7 h-7 rounded bg-[#1e1e1e] border border-[#343434] group-hover:border-[#D4AF37] flex items-center justify-center flex-shrink-0">
-                  <Mail className="w-3.5 h-3.5 text-[#D4AF37]" />
+              {activeEmail ? (
+                <a 
+                  href={`mailto:${activeEmail}`} 
+                  className="flex items-center gap-2.5 text-[#F5F0E6] hover:text-[#D4AF37] transition-colors group"
+                >
+                  <div className="w-7 h-7 rounded bg-[#1e1e1e] border border-[#343434] group-hover:border-[#D4AF37] flex items-center justify-center flex-shrink-0">
+                    <Mail className="w-3.5 h-3.5 text-[#D4AF37]" />
+                  </div>
+                  <div>
+                    <span className="block text-[9px] font-mono text-[#F5F0E6]/50 uppercase">Purchase Orders (PO)</span>
+                    <span className="font-mono font-bold">{activeEmail}</span>
+                  </div>
+                </a>
+              ) : (
+                <div className="flex items-center gap-2.5 text-[#F5F0E6]/50">
+                  <div className="w-7 h-7 rounded bg-[#1e1e1e] border border-[#343434] flex items-center justify-center flex-shrink-0">
+                    <Mail className="w-3.5 h-3.5 text-neutral-500" />
+                  </div>
+                  <div>
+                    <span className="block text-[9px] font-mono text-[#F5F0E6]/40 uppercase">Purchase Orders (PO)</span>
+                    <span className="font-mono italic text-neutral-400 text-xs">Not Available</span>
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[9px] font-mono text-[#F5F0E6]/50 uppercase">Purchase Orders (PO)</span>
-                  <span className="font-mono font-bold">{activeEmail}</span>
-                </div>
-              </a>
+              )}
 
-              <a 
-                href={`tel:${activeEmergency.replace(/\s+/g, '')}`} 
-                className="flex items-center gap-2.5 text-red-200 hover:text-white transition-colors group"
-              >
-                <div className="w-7 h-7 rounded bg-red-950/60 border border-red-800/80 group-hover:border-red-500 flex items-center justify-center flex-shrink-0">
-                  <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+              {activeEmergency ? (
+                <a 
+                  href={`tel:${activeEmergency.replace(/\s+/g, '')}`} 
+                  className="flex items-center gap-2.5 text-red-200 hover:text-white transition-colors group"
+                >
+                  <div className="w-7 h-7 rounded bg-red-950/60 border border-red-800/80 group-hover:border-red-500 flex items-center justify-center flex-shrink-0">
+                    <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+                  </div>
+                  <div>
+                    <span className="block text-[9px] font-mono text-red-400 uppercase font-bold">24/7 Reefer Line</span>
+                    <span className="font-mono font-bold text-white">{activeEmergency}</span>
+                  </div>
+                </a>
+              ) : (
+                <div className="flex items-center gap-2.5 text-[#F5F0E6]/50">
+                  <div className="w-7 h-7 rounded bg-[#1e1e1e] border border-[#343434] flex items-center justify-center flex-shrink-0">
+                    <ShieldAlert className="w-3.5 h-3.5 text-neutral-500" />
+                  </div>
+                  <div>
+                    <span className="block text-[9px] font-mono text-[#F5F0E6]/40 uppercase">24/7 Reefer Line</span>
+                    <span className="font-mono italic text-neutral-400 text-xs">Not Available</span>
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[9px] font-mono text-red-400 uppercase font-bold">24/7 Reefer Line</span>
-                  <span className="font-mono font-bold text-white">{activeEmergency}</span>
-                </div>
-              </a>
+              )}
 
-              <div className="flex items-start gap-2.5 text-[#F5F0E6]/70 pt-1">
-                <div className="w-7 h-7 rounded bg-[#1e1e1e] border border-[#343434] flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <MapPin className="w-3.5 h-3.5 text-[#D4AF37]" />
+              {activeAddress ? (
+                <div className="flex items-start gap-2.5 text-[#F5F0E6]/70 pt-1">
+                  <div className="w-7 h-7 rounded bg-[#1e1e1e] border border-[#343434] flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <MapPin className="w-3.5 h-3.5 text-[#D4AF37]" />
+                  </div>
+                  <div>
+                    <span className="block text-[9px] font-mono text-[#F5F0E6]/50 uppercase">Central Mega Hub</span>
+                    <span className="text-[11px] leading-relaxed block">{activeAddress}</span>
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[9px] font-mono text-[#F5F0E6]/50 uppercase">Central Mega Hub</span>
-                  <span className="text-[11px] leading-relaxed block">{activeAddress}</span>
+              ) : (
+                <div className="flex items-start gap-2.5 text-[#F5F0E6]/50 pt-1">
+                  <div className="w-7 h-7 rounded bg-[#1e1e1e] border border-[#343434] flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <MapPin className="w-3.5 h-3.5 text-neutral-500" />
+                  </div>
+                  <div>
+                    <span className="block text-[9px] font-mono text-[#F5F0E6]/40 uppercase">Central Mega Hub</span>
+                    <span className="font-mono italic text-neutral-400 text-xs block">Not Available</span>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
@@ -349,20 +400,34 @@ export default function Footer({ onOpenPartnerModal, onOpenCatalogModal, onNavig
               INSTANT CONNECT
             </h4>
 
-            <a
-              href={`https://wa.me/${activeWhatsapp}?text=Hello%20Malabar%20Prime%2C%20wholesale%20distribution%20inquiry.`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-3.5 bg-[#1e1e1e] hover:bg-[#D4AF37] hover:text-[#101010] border border-[#343434] hover:border-[#D4AF37] rounded flex items-center gap-3 group text-xs transition-colors"
-            >
-              <div className="w-9 h-9 rounded bg-[#D4AF37] group-hover:bg-[#101010] flex items-center justify-center text-[#101010] group-hover:text-[#D4AF37] font-bold flex-shrink-0 transition-colors">
-                <MessageSquare className="w-5 h-5" />
+            {activeWhatsapp ? (
+              <a
+                href={`https://wa.me/${activeWhatsapp}?text=Hello%20Malabar%20Prime%2C%20wholesale%20distribution%20inquiry.`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-3.5 bg-[#1e1e1e] hover:bg-[#D4AF37] hover:text-[#101010] border border-[#343434] hover:border-[#D4AF37] rounded flex items-center gap-3 group text-xs transition-colors"
+              >
+                <div className="w-9 h-9 rounded bg-[#D4AF37] group-hover:bg-[#101010] flex items-center justify-center text-[#101010] group-hover:text-[#D4AF37] font-bold flex-shrink-0 transition-colors">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="font-bold block uppercase text-[11px]">WhatsApp Sales Desk</span>
+                  <span className="text-[10px] opacity-75 font-mono">Real-time quotes &amp; samples</span>
+                </div>
+              </a>
+            ) : (
+              <div
+                className="p-3.5 bg-[#1e1e1e]/60 border border-[#343434] rounded flex items-center gap-3 text-xs opacity-60 cursor-not-allowed"
+              >
+                <div className="w-9 h-9 rounded bg-[#343434] flex items-center justify-center text-neutral-400 font-bold flex-shrink-0">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="font-bold block uppercase text-[11px] text-[#F5F0E6]">WhatsApp Sales Desk</span>
+                  <span className="text-[10px] italic font-mono text-neutral-400">Not Available</span>
+                </div>
               </div>
-              <div>
-                <span className="font-bold block uppercase text-[11px]">WhatsApp Sales Desk</span>
-                <span className="text-[10px] opacity-75 font-mono">Real-time quotes &amp; samples</span>
-              </div>
-            </a>
+            )}
 
             <div className="flex gap-2 pt-1">
               <button
@@ -385,9 +450,9 @@ export default function Footer({ onOpenPartnerModal, onOpenCatalogModal, onNavig
                 <ShieldCheck className="w-3.5 h-3.5 text-[#D4AF37]" />
                 <span className="uppercase tracking-wider">Statutory Licenses</span>
               </div>
-              <p>FSSAI: <span className="text-[#D4AF37]">{COMPANY_INFO.fssaiNumber}</span></p>
-              <p>GSTIN: <span className="text-white">{COMPANY_INFO.gstNumber}</span></p>
-              <p>{COMPANY_INFO.isoCert}</p>
+              <p>FSSAI: <span className={assurance?.fssaiNumber ? "text-[#D4AF37]" : "italic text-neutral-400"}>{assurance?.fssaiNumber || 'Not Available'}</span></p>
+              <p>GSTIN: <span className={assurance?.gstNumber ? "text-white" : "italic text-neutral-400"}>{assurance?.gstNumber || 'Not Available'}</span></p>
+              <p className={assurance?.isoCert ? "text-[#F5F0E6]/80" : "italic text-neutral-400"}>{assurance?.isoCert || 'ISO: Not Available'}</p>
             </div>
           </div>
 

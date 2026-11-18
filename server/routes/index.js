@@ -15,6 +15,7 @@ import { uploadRoutes } from './uploadRoutes.js';
 import { pdfRoutes } from './pdfRoutes.js';
 import { companyRoutes } from './companyRoutes.js';
 import { policyRoutes } from './policyRoutes.js';
+import { warehouseRoutes } from './warehouseRoutes.js';
 
 // Route Pattern Matcher
 export function matchRoute(pattern, pathname) {
@@ -112,6 +113,9 @@ export async function handleApiRequest(req, res) {
     if (handled !== false) return;
 
     handled = await policyRoutes(method, pathname, req, res, body, query, matchRoute);
+    if (handled !== false) return;
+
+    handled = await warehouseRoutes(method, pathname, req, res, body, query, matchRoute);
     if (handled !== false) return;
 
     // 6. Route Not Found

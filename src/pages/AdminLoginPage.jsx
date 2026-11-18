@@ -22,6 +22,7 @@ export default function AdminLoginPage({ onLoginSuccess, onNavigatePublic }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const assurance = dataService.getAssurance();
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -210,14 +211,14 @@ export default function AdminLoginPage({ onLoginSuccess, onNavigatePublic }) {
           {/* Statutory Verification Footer */}
           <div className="mt-8 pt-6 border-t border-[#343434]/80 flex flex-wrap items-center justify-between gap-3 text-[10px] font-mono text-[#F5F0E6]/50">
             <span className="flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3 text-[#D4AF37]" />
-              FSSAI: 11322001000845
+              <CheckCircle2 className={`w-3 h-3 ${assurance?.fssaiNumber ? 'text-[#D4AF37]' : 'text-neutral-500'}`} />
+              FSSAI: {assurance?.fssaiNumber || 'Not Available'}
             </span>
             <span className="flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3 text-[#D4AF37]" />
-              GST: 32AAECM4912L1ZT
+              <CheckCircle2 className={`w-3 h-3 ${assurance?.gstNumber ? 'text-[#D4AF37]' : 'text-neutral-500'}`} />
+              GST: {assurance?.gstNumber || 'Not Available'}
             </span>
-            <span>ISO 22000:2018</span>
+            <span>{assurance?.isoCert || 'ISO: Not Available'}</span>
           </div>
 
         </div>

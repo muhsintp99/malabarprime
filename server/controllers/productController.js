@@ -52,7 +52,7 @@ export const productController = {
       stockStatus: body.stockStatus || 'In Stock',
       shelfLife: body.shelfLife || '12 Months',
       origin: body.origin || 'Kerala, India',
-      fssai: db.assurance?.fssaiNumber || '11322001000845',
+      fssai: body.fssai || db.assurance?.fssaiNumber || '',
       image: body.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80',
       description: body.description || ''
     };

@@ -74,11 +74,15 @@ export default function ProductModal({ product, onClose, onAddToRfq }) {
                   </div>
                   <div>
                     <span className="text-[#343434] block text-[9px] uppercase">FSSAI LICENSE</span>
-                    <span className="text-[#101010] font-bold">{product.fssai}</span>
+                    <span className={product.fssai ? "text-[#101010] font-bold" : "text-neutral-400 italic text-[10px]"}>
+                      {product.fssai || 'Not Available'}
+                    </span>
                   </div>
                   <div>
-                    <span className="text-[#343434] block text-[9px] uppercase">ORIGIN DEPOT</span>
-                    <span className="text-[#343434] font-medium">{product.origin}</span>
+                    <span className="text-[#343434] block text-[9px] uppercase">ORIGIN / WAREHOUSE</span>
+                    <span className={product.warehouse || product.origin ? "text-[#101010] font-medium" : "text-neutral-400 italic text-[10px]"}>
+                      {product.warehouse || product.origin || 'Not Available'}
+                    </span>
                   </div>
                   <div>
                     <span className="text-[#343434] block text-[9px] uppercase">NET WT. / CASE</span>

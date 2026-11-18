@@ -176,17 +176,17 @@ export const DEFAULT_POLICIES = {
       {
         number: '01',
         heading: 'Food Safety and Standards Authority of India (FSSAI)',
-        content: 'We operate strictly under valid FSSAI Central/State License No. 11322001000845 enforcing inward lot spectrometry, segregated palletized warehousing, periodic pest control, and cold-chain logging.'
+        content: 'We operate strictly under valid FSSAI Central/State statutory licensing enforcing inward lot spectrometry, segregated palletized warehousing, periodic pest control, and cold-chain logging.'
       },
       {
         number: '02',
         heading: 'Goods and Services Tax (GST) & E-Way Bill Compliance',
-        content: 'Operating under GSTIN 32AAECM4912L1ZT, our billing engine provides 100% input tax credit (ITC) compliance with automated HSN itemization and E-Way bills uploaded directly to the GST portal.'
+        content: 'Operating under verified GST registration, our billing engine provides 100% input tax credit (ITC) compliance with automated HSN itemization and E-Way bills uploaded directly to the GST portal.'
       },
       {
         number: '03',
-        heading: 'ISO 22000:2018 & HACCP Quality Management',
-        content: 'Our logistics infrastructure maintains ISO 22000:2018 certification and HACCP food hygiene protocols across handling, pallet wrapping, temperature monitoring, and vehicle dispatch.'
+        heading: 'Food Safety & Quality Management',
+        content: 'Our logistics infrastructure maintains certified food safety and HACCP food hygiene protocols across handling, pallet wrapping, temperature monitoring, and vehicle dispatch.'
       },
       {
         number: '04',

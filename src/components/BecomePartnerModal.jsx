@@ -154,7 +154,7 @@ export default function BecomePartnerModal({ isOpen, onClose }) {
                     required
                     value={phone}
                     onChange={e => setPhone(e.target.value)}
-                    placeholder="+91 98470 12345"
+                    placeholder="+91 XXXXX XXXXX"
                     className="w-full p-2.5 bg-white border border-[#101010] rounded focus:bg-[#F5F0E6] outline-none text-[#101010] font-mono"
                   />
                 </div>
@@ -195,7 +195,7 @@ export default function BecomePartnerModal({ isOpen, onClose }) {
                     type="text"
                     value={gstin}
                     onChange={e => setGstin(e.target.value)}
-                    placeholder="32AAECM4912L1ZT"
+                    placeholder="e.g. 32AAAAA0000A1Z5"
                     className="w-full p-2.5 bg-white border border-[#101010] rounded focus:bg-[#F5F0E6] outline-none text-[#101010] font-mono uppercase"
                   />
                 </div>

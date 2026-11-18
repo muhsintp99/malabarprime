@@ -96,7 +96,7 @@ export default function AboutAndQuality() {
                 <ShieldCheck className="w-10 h-10 text-[#D4AF37] mx-auto" />
                 <h4 className="font-editorial font-bold text-lg text-[#101010]">Statutory Compliance Monitored</h4>
                 <p className="text-xs font-mono text-[#343434]">
-                  FSSAI: {assurance.fssaiNumber || '11322001000845'} | GST: {assurance.gstNumber || '32AAECM4912L1ZT'}
+                  FSSAI: <span className={assurance.fssaiNumber ? "font-bold text-[#101010]" : "italic text-neutral-400"}>{assurance.fssaiNumber || 'Not Available'}</span> | GST: <span className={assurance.gstNumber ? "font-bold text-[#101010]" : "italic text-neutral-400"}>{assurance.gstNumber || 'Not Available'}</span>
                 </p>
                 <p className="text-xs text-[#343434] pt-2">
                   All active statutory certifications can be audited and managed directly from the Admin Assurance Desk.

@@ -7,7 +7,7 @@ export default function MarqueeTicker() {
     { text: "24-48 HOUR STORE REPLENISHMENT", serif: false },
     { text: "100% GENUINE FACTORY BATCHES", serif: true },
     { text: "COLD-CHAIN REEFER LOGISTICS", serif: false },
-    { text: "FSSAI & ISO 22000:2018 CERTIFIED", serif: false },
+    { text: "100% STATUTORY & REGULATORY COMPLIANT", serif: false },
     { text: "DIRECT PRODUCER WHOLESALE MARGINS", serif: true },
   ];
 

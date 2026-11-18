@@ -30,11 +30,13 @@ export default function LegalModal({
   onNavigate 
 }) {
   const [policies, setPolicies] = useState(() => dataService.getPolicies());
+  const [assurance, setAssurance] = useState(() => dataService.getAssurance());
   const [activeTab, setActiveTab] = useState(initialPolicy);
 
   useEffect(() => {
     const unsub = dataService.subscribe(() => {
       setPolicies(dataService.getPolicies());
+      setAssurance(dataService.getAssurance());
     });
     return unsub;
   }, []);
@@ -168,7 +170,7 @@ export default function LegalModal({
               <span>Effective Date: <strong>{currentPolicy.effectiveDate}</strong></span>
             </div>
             <div>
-              <span>FSSAI: <strong>{COMPANY_INFO.fssaiNumber}</strong> &bull; GSTIN: <strong>{COMPANY_INFO.gstNumber}</strong></span>
+              <span>FSSAI: <strong>{assurance?.fssaiNumber || 'Not Available'}</strong> &bull; GSTIN: <strong>{assurance?.gstNumber || 'Not Available'}</strong></span>
             </div>
           </div>
 

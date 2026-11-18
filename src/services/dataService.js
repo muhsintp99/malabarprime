@@ -1,4 +1,4 @@
-import { COMPANY_INFO as INITIAL_COMPANY_INFO } from '../data/distributionData';
+import { COMPANY_INFO as INITIAL_COMPANY_INFO, WAREHOUSE_HUBS as INITIAL_WAREHOUSES } from '../data/distributionData';
 import { LEGAL_POLICIES as INITIAL_POLICIES } from '../data/legalData';
 
 // Admin Pre-Configured Credentials
@@ -53,6 +53,16 @@ class DataService {
         localStorage.removeItem('mp_contacts');
         localStorage.setItem('mp_v3_clean_synced', 'true');
       }
+      const isContactCleaned = localStorage.getItem('mp_v4_clean_contact');
+      if (!isContactCleaned) {
+        localStorage.removeItem('mp_company_contact');
+        localStorage.setItem('mp_v4_clean_contact', 'true');
+      }
+      const isAssuranceCleaned = localStorage.getItem('mp_v5_clean_assurance');
+      if (!isAssuranceCleaned) {
+        localStorage.removeItem('mp_assurance');
+        localStorage.setItem('mp_v5_clean_assurance', 'true');
+      }
     }
     this.init();
     if (typeof window !== 'undefined') {
@@ -65,7 +75,7 @@ class DataService {
       const statsRes = await fetch('/api/stats');
       if (!statsRes.ok) return;
 
-      const [pRes, cRes, bRes, eRes, partRes, contRes, tRes, aRes, compRes, polRes] = await Promise.all([
+      const [pRes, cRes, bRes, eRes, partRes, contRes, tRes, aRes, compRes, polRes, whRes] = await Promise.all([
         fetch('/api/products').then(r => r.json()).catch(() => ({})),
         fetch('/api/categories').then(r => r.json()).catch(() => ({})),
         fetch('/api/brands').then(r => r.json()).catch(() => ({})),
@@ -75,7 +85,8 @@ class DataService {
         fetch('/api/testimonials').then(r => r.json()).catch(() => ({})),
         fetch('/api/assurance').then(r => r.json()).catch(() => ({})),
         fetch('/api/company/contact').then(r => r.json()).catch(() => ({})),
-        fetch('/api/policies').then(r => r.json()).catch(() => ({}))
+        fetch('/api/policies').then(r => r.json()).catch(() => ({})),
+        fetch('/api/warehouses').then(r => r.json()).catch(() => ({}))
       ]);
 
       if (pRes.data && Array.isArray(pRes.data)) { this.products = pRes.data; saveToStorage('products', this.products); }
@@ -88,6 +99,7 @@ class DataService {
       if (aRes.data && typeof aRes.data === 'object') { this.assurance = aRes.data; saveToStorage('assurance', this.assurance); }
       if (compRes.data && typeof compRes.data === 'object') { this.companyContact = compRes.data; saveToStorage('company_contact', this.companyContact); }
       if (polRes.data && typeof polRes.data === 'object') { this.policies = polRes.data; saveToStorage('policies', this.policies); }
+      if (whRes.data && Array.isArray(whRes.data)) { this.warehouses = whRes.data; saveToStorage('warehouses', this.warehouses); }
 
       this.notify();
     } catch (e) {
@@ -118,25 +130,26 @@ class DataService {
     this.assurance = loadFromStorage('assurance', {
       companyInfo: INITIAL_COMPANY_INFO,
       certifications: INITIAL_CERTIFICATIONS,
-      fssaiNumber: INITIAL_COMPANY_INFO.fssaiNumber,
-      gstNumber: INITIAL_COMPANY_INFO.gstNumber,
-      isoCert: INITIAL_COMPANY_INFO.isoCert,
-      coldChainCompliance: 'HACCP & ISO 22000:2018 Certified Cold Chain',
-      legalMetrology: '100% Barcoded & MRP Compliant Packaged Goods',
-      labTesting: 'Inward Spectrometry & Moisture Level Testing on Every Lot'
+      fssaiNumber: '',
+      gstNumber: '',
+      isoCert: '',
+      coldChainCompliance: '',
+      legalMetrology: '',
+      labTesting: ''
     });
     this.companyContact = loadFromStorage('company_contact', {
-      contact: 'Central Trade Desk Director',
-      whatsapp: '+91 98470 12345',
-      call: '+91 98470 12345',
-      emergensy: '+91 94470 99999',
-      email: 'wholesale@malabarprime.com',
-      supportEmail: 'support@malabarprime.com',
-      location: 'Kozhikode, Kerala (NH-66 Logistics Hub)',
-      adress: 'Central Distribution Hub, NH-66 Logistics Corridor, Ramanattukara, Kozhikode, Kerala 673633',
-      workingHours: 'Mon - Sat: 8:00 AM - 9:00 PM (24/7 Cold Chain Telemetry Dispatch)'
+      contact: '',
+      whatsapp: '',
+      call: '',
+      emergensy: '',
+      email: '',
+      supportEmail: '',
+      location: '',
+      adress: '',
+      workingHours: ''
     });
     this.policies = loadFromStorage('policies', INITIAL_POLICIES);
+    this.warehouses = loadFromStorage('warehouses', INITIAL_WAREHOUSES);
   }
 
   subscribe(listener) {
@@ -595,6 +608,62 @@ class DataService {
     this.apiCall('/api/policies/reset', 'POST');
     this.notify();
     return this.policies;
+  }
+
+  // --- WAREHOUSES & REGIONAL HUBS ---
+  getWarehouses() {
+    return [...(this.warehouses || [])];
+  }
+
+  getWarehouse(id) {
+    return (this.warehouses || []).find(w => w.id === id) || null;
+  }
+
+  addWarehouse(hub) {
+    const slug = (hub.id || hub.name).toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
+    const newHub = {
+      id: slug || `wh-${Date.now()}`,
+      name: hub.name,
+      city: hub.city || '',
+      capacity: hub.capacity || '',
+      features: Array.isArray(hub.features) 
+        ? hub.features 
+        : (hub.features ? String(hub.features).split(',').map(s => s.trim()).filter(Boolean) : []),
+      coverage: hub.coverage || '',
+      dispatchTime: hub.dispatchTime || ''
+    };
+    this.warehouses = [...(this.warehouses || []), newHub];
+    saveToStorage('warehouses', this.warehouses);
+    this.apiCall('/api/warehouses', 'POST', newHub);
+    this.notify();
+    return newHub;
+  }
+
+  updateWarehouse(id, updates) {
+    const index = (this.warehouses || []).findIndex(w => w.id === id);
+    if (index === -1) return null;
+    const features = updates.features !== undefined
+      ? (Array.isArray(updates.features) ? updates.features : String(updates.features).split(',').map(s => s.trim()).filter(Boolean))
+      : this.warehouses[index].features;
+
+    const updated = {
+      ...this.warehouses[index],
+      ...updates,
+      features,
+      id
+    };
+    this.warehouses[index] = updated;
+    saveToStorage('warehouses', this.warehouses);
+    this.apiCall(`/api/warehouses/${encodeURIComponent(id)}`, 'PUT', updated);
+    this.notify();
+    return updated;
+  }
+
+  deleteWarehouse(id) {
+    this.warehouses = (this.warehouses || []).filter(w => w.id !== id);
+    saveToStorage('warehouses', this.warehouses);
+    this.apiCall(`/api/warehouses/${encodeURIComponent(id)}`, 'DELETE');
+    this.notify();
   }
 }
 

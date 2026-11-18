@@ -6,9 +6,20 @@ import {
 } from 'lucide-react';
 import { PRODUCTS } from '../data/products';
 import { COMPANY_INFO } from '../data/distributionData';
+import { dataService } from '../services/dataService';
 
 export default function DownloadCatalogModal({ isOpen, onClose }) {
   if (!isOpen) return null;
+
+  const contactInfo = dataService.getCompanyContact();
+  const assurance = dataService.getAssurance();
+  const addressText = contactInfo?.adress || contactInfo?.location || 'Not Available';
+  const phoneText = contactInfo?.call || contactInfo?.contact || 'Not Available';
+  const emailText = contactInfo?.email || 'Not Available';
+  const waText = contactInfo?.whatsapp || 'Not Available';
+  const fssaiText = assurance?.fssaiNumber || 'Not Available';
+  const gstinText = assurance?.gstNumber || 'Not Available';
+  const isoText = assurance?.isoCert || 'Not Available';
 
   const handlePrint = () => {
     window.print();
@@ -72,21 +83,21 @@ export default function DownloadCatalogModal({ isOpen, onClose }) {
                   </span>
                 </div>
                 <p className="text-xs text-[#343434] font-medium mt-1">
-                  {COMPANY_INFO.address}
+                  {addressText}
                 </p>
                 <div className="flex flex-wrap items-center gap-3 text-[11px] text-[#343434] font-mono mt-1">
-                  <span>FSSAI: {COMPANY_INFO.fssaiNumber}</span>
+                  <span>FSSAI: {fssaiText}</span>
                   <span>•</span>
-                  <span>GSTIN: {COMPANY_INFO.gstNumber}</span>
+                  <span>GSTIN: {gstinText}</span>
                   <span>•</span>
-                  <span>{COMPANY_INFO.isoCert}</span>
+                  <span>{isoText}</span>
                 </div>
               </div>
             </div>
 
             <div className="text-right text-xs text-[#343434]">
-              <p className="font-bold text-[#101010]">Direct Sales Desk: {COMPANY_INFO.phone}</p>
-              <p className="text-[#343434]">{COMPANY_INFO.salesEmail}</p>
+              <p className="font-bold text-[#101010]">Direct Sales Desk: {phoneText}</p>
+              <p className="text-[#343434]">{emailText}</p>
               <p className="text-[11px] text-[#101010] font-bold mt-1 font-mono">
                 Effective Season: 2026 Q4
               </p>
@@ -152,7 +163,7 @@ export default function DownloadCatalogModal({ isOpen, onClose }) {
             <div>
               <h5 className="font-bold text-[#101010] uppercase text-[11px] mb-1">Order Desk</h5>
               <p className="text-[11px] text-[#343434] leading-relaxed">
-                Send POs to orders@malabarprime.com or via WhatsApp Business line at +91 98470 12345.
+                Send POs to {emailText !== 'Not Available' ? emailText : 'Trade Desk'} or via WhatsApp Business line at {waText}.
               </p>
             </div>
           </div>

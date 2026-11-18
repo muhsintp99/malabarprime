@@ -314,7 +314,7 @@ export default function RfqDrawer({
                         required
                         value={buyerPhone}
                         onChange={e => setBuyerPhone(e.target.value)}
-                        placeholder="+91 98470 12345"
+                        placeholder="+91 XXXXX XXXXX"
                         className="w-full text-xs p-2.5 bg-[#F5F0E6] border border-[#101010] rounded focus:bg-white outline-none text-[#101010] font-mono"
                       />
                     </div>
@@ -326,7 +326,7 @@ export default function RfqDrawer({
                         type="text"
                         value={buyerGst}
                         onChange={e => setBuyerGst(e.target.value)}
-                        placeholder="32AAECM4912L1ZT"
+                        placeholder="e.g. 32AAAAA0000A1Z5"
                         className="w-full text-xs p-2.5 bg-[#F5F0E6] border border-[#101010] rounded focus:bg-white outline-none text-[#101010] font-mono uppercase"
                       />
                     </div>

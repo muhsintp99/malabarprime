@@ -13,6 +13,7 @@ import {
   MapPin
 } from 'lucide-react';
 import BrandWordmark from '../BrandWordmark';
+import { dataService } from '../../services/dataService';
 
 export default function PdfReportView({ 
   type = 'pricelist', // 'pricelist', 'quotation', 'partners'
@@ -20,6 +21,15 @@ export default function PdfReportView({
   onClose 
 }) {
   const printAreaRef = useRef(null);
+
+  const companyContact = dataService.getCompanyContact();
+  const assurance = dataService.getAssurance();
+  const printableAddress = companyContact?.adress || companyContact?.location || 'Not Available';
+  const printablePhone = companyContact?.call || companyContact?.contact || 'Not Available';
+  const printableEmail = companyContact?.email || 'Not Available';
+  const printableFssai = assurance?.fssaiNumber || 'Not Available';
+  const printableGst = assurance?.gstNumber || 'Not Available';
+  const printableIso = assurance?.isoCert || 'Not Available';
 
   const handlePrint = () => {
     window.print();
@@ -99,8 +109,8 @@ export default function PdfReportView({
                 </div>
               </div>
               <p className="text-[11px] text-[#444] font-medium leading-relaxed max-w-sm">
-                Central Master Depot, NH-66 Bypass Road, Kozhikode, Kerala &bull; 673014<br />
-                Hotline: +91 98470 12345 &bull; Desk: malabarprime.co@gmail.com
+                {printableAddress}<br />
+                Hotline: {printablePhone} &bull; Desk: {printableEmail}
               </p>
             </div>
 
@@ -112,9 +122,9 @@ export default function PdfReportView({
                 {type === 'partners' && 'AUTHORIZED PARTNER DIRECTORY'}
               </div>
               <div><strong>Doc Date:</strong> {currentDate}</div>
-              <div><strong>FSSAI Lic:</strong> 11322001000845</div>
-              <div><strong>GSTIN:</strong> 32AAECM4912L1ZT</div>
-              <div><strong>Compliance:</strong> ISO 22000:2018 Certified</div>
+              <div><strong>FSSAI Lic:</strong> {printableFssai}</div>
+              <div><strong>GSTIN:</strong> {printableGst}</div>
+              <div><strong>Compliance:</strong> {printableIso}</div>
             </div>
 
           </div>
@@ -204,8 +214,8 @@ export default function PdfReportView({
                 <div className="font-bold text-sm text-[#101010]">{data.rfq?.buyerCompany || 'Valued Retail Supermarket'}</div>
                 <div className="text-gray-700">{data.rfq?.contactPerson || 'Procurement In-Charge'}</div>
                 <div className="text-gray-700">{data.rfq?.location || 'Kerala, India'}</div>
-                <div className="font-mono text-[10px] text-gray-600 mt-1">Phone: {data.rfq?.phone || '+91 98470 00000'}</div>
-                <div className="font-mono text-[10px] text-gray-600">GSTIN: {data.rfq?.gstin || '32AABCP1234E1Z0'}</div>
+                <div className="font-mono text-[10px] text-gray-600 mt-1">Phone: {data.rfq?.phone || 'Not Available'}</div>
+                <div className="font-mono text-[10px] text-gray-600">GSTIN: {data.rfq?.gstin || 'Not Available'}</div>
               </div>
               <div className="text-right space-y-1 font-mono">
                 <div><strong>Proforma No:</strong> {data.rfq?.id ? `PI-${data.rfq.id}` : 'PI-MP-2026-9041'}</div>

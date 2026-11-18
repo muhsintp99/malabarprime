@@ -43,8 +43,9 @@ export default function Navbar({
     return unsub;
   }, []);
 
-  const activePhone = contactInfo?.call || COMPANY_INFO.phone;
-  const activeWhatsapp = (contactInfo?.whatsapp || COMPANY_INFO.whatsapp || '').replace(/[^0-9]/g, '');
+  const activePhone = contactInfo?.call || contactInfo?.contact || null;
+  const rawWa = contactInfo?.whatsapp || '';
+  const activeWhatsapp = rawWa ? rawWa.replace(/[^0-9]/g, '') : null;
 
   // Auto-hiding navbar on scroll down, smooth show on scroll up
   useEffect(() => {
@@ -134,24 +135,44 @@ export default function Navbar({
           <div className="flex items-center h-full">
             
             {/* Sales Hotline */}
-            <a 
-              href={`tel:${activePhone.replace(/\s+/g, '')}`}
-              className="hidden lg:flex items-center gap-2 px-5 h-full border-l border-[#101010] text-xs font-bold text-[#101010] hover:bg-[#D4AF37]/10 transition-colors"
-            >
-              <Phone className="w-3.5 h-3.5 text-[#343434]" />
-              <span className="font-mono">{activePhone}</span>
-            </a>
+            {activePhone ? (
+              <a 
+                href={`tel:${activePhone.replace(/\s+/g, '')}`}
+                className="hidden lg:flex items-center gap-2 px-5 h-full border-l border-[#101010] text-xs font-bold text-[#101010] hover:bg-[#D4AF37]/10 transition-colors"
+              >
+                <Phone className="w-3.5 h-3.5 text-[#343434]" />
+                <span className="font-mono">{activePhone}</span>
+              </a>
+            ) : (
+              <div 
+                className="hidden lg:flex items-center gap-2 px-5 h-full border-l border-[#101010] text-xs font-bold text-neutral-400 opacity-60"
+                title="Phone: Not Available"
+              >
+                <Phone className="w-3.5 h-3.5 text-neutral-400" />
+                <span className="font-mono italic text-[11px]">Not Available</span>
+              </div>
+            )}
 
             {/* WhatsApp Quick Desk */}
-            <a
-              href={`https://wa.me/${activeWhatsapp}?text=Hello%20Malabar%20Prime%20Distributions%2C%20wholesale%20distribution%20inquiry.`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-1.5 px-4 h-full border-l border-[#101010] text-xs font-bold text-[#101010] hover:bg-[#D4AF37]/20 transition-colors"
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-[#343434]" />
-              <span className="hidden xl:inline">WhatsApp Desk</span>
-            </a>
+            {activeWhatsapp ? (
+              <a
+                href={`https://wa.me/${activeWhatsapp}?text=Hello%20Malabar%20Prime%20Distributions%2C%20wholesale%20distribution%20inquiry.`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden sm:flex items-center gap-1.5 px-4 h-full border-l border-[#101010] text-xs font-bold text-[#101010] hover:bg-[#D4AF37]/20 transition-colors"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-[#343434]" />
+                <span className="hidden xl:inline">WhatsApp Desk</span>
+              </a>
+            ) : (
+              <div
+                className="hidden sm:flex items-center gap-1.5 px-4 h-full border-l border-[#101010] text-xs font-bold text-neutral-400 opacity-60"
+                title="WhatsApp: Not Available"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-neutral-400" />
+                <span className="hidden xl:inline italic text-[11px]">WhatsApp: Not Available</span>
+              </div>
+            )}
 
             {/* RFQ Cart Trigger */}
             <button

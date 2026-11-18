@@ -62,11 +62,18 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
   const [products, setProducts] = useState(dataService.getProducts());
   const [categories, setCategories] = useState(dataService.getCategories());
   const [brands, setBrands] = useState(dataService.getBrands());
+  const [warehouses, setWarehouses] = useState(() => dataService.getWarehouses());
+  const [warehouseSavedToast, setWarehouseSavedToast] = useState(false);
   const [enquiries, setEnquiries] = useState(dataService.getEnquiries());
   const [partners, setPartners] = useState(dataService.getPartnerApplications());
   const [contacts, setContacts] = useState(dataService.getContactMessages());
   const [testimonials, setTestimonials] = useState(dataService.getTestimonials());
   const [assurance, setAssurance] = useState(dataService.getAssurance());
+
+  // Product Modal Dynamic Selection States (supports "Other")
+  const [productCategoryChoice, setProductCategoryChoice] = useState('');
+  const [productWarehouseChoice, setProductWarehouseChoice] = useState('');
+  const [productBrandChoice, setProductBrandChoice] = useState('');
 
   // Search & Filters
   const [globalSearch, setGlobalSearch] = useState('');
@@ -83,12 +90,12 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
 
   // Assurance Form State
   const [assuranceForm, setAssuranceForm] = useState({
-    fssaiNumber: assurance.fssaiNumber || '11322001000845',
-    gstNumber: assurance.gstNumber || '32AAECM4912L1ZT',
-    isoCert: assurance.isoCert || 'ISO 22000:2018',
-    coldChainCompliance: assurance.coldChainCompliance || 'HACCP & ISO 22000:2018 Certified Cold Chain',
-    legalMetrology: assurance.legalMetrology || '100% Barcoded & MRP Compliant Packaged Goods',
-    labTesting: assurance.labTesting || 'Inward Spectrometry & Moisture Level Testing on Every Lot'
+    fssaiNumber: assurance.fssaiNumber || '',
+    gstNumber: assurance.gstNumber || '',
+    isoCert: assurance.isoCert || '',
+    coldChainCompliance: assurance.coldChainCompliance || '',
+    legalMetrology: assurance.legalMetrology || '',
+    labTesting: assurance.labTesting || ''
   });
   const [assuranceSavedToast, setAssuranceSavedToast] = useState(false);
 
@@ -126,7 +133,24 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
       setModalImageUrl('');
     }
     setUploadError('');
-  }, [modalType, editingItem]);
+
+    if (modalType === 'product') {
+      if (editingItem) {
+        const catExists = categories.some(c => c.id === editingItem.category);
+        setProductCategoryChoice(catExists ? editingItem.category : '__other__');
+
+        const whExists = warehouses.some(w => w.name === editingItem.warehouse);
+        setProductWarehouseChoice(editingItem.warehouse ? (whExists ? editingItem.warehouse : '__other__') : '');
+
+        const brandExists = brands.some(b => b.name === editingItem.brand);
+        setProductBrandChoice(editingItem.brand ? (brandExists ? editingItem.brand : '__other__') : (brands[0]?.name || 'MALABAR PRIME'));
+      } else {
+        setProductCategoryChoice(categories[0]?.id || 'chocolates');
+        setProductWarehouseChoice(warehouses[0]?.name || '');
+        setProductBrandChoice(brands[0]?.name || 'MALABAR PRIME');
+      }
+    }
+  }, [modalType, editingItem, categories, warehouses, brands]);
 
   const handleFileUpload = async (file) => {
     if (!file) return;
@@ -148,6 +172,7 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
       setProducts(dataService.getProducts());
       setCategories(dataService.getCategories());
       setBrands(dataService.getBrands());
+      setWarehouses(dataService.getWarehouses());
       setEnquiries(dataService.getEnquiries());
       setPartners(dataService.getPartnerApplications());
       setContacts(dataService.getContactMessages());
@@ -193,9 +218,10 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
       unreadContacts,
       totalProducts: products.length,
       totalCategories: categories.length,
-      totalBrands: brands.length
+      totalBrands: brands.length,
+      totalWarehouses: warehouses.length
     };
-  }, [enquiries, partners, contacts, products, categories, brands]);
+  }, [enquiries, partners, contacts, products, categories, brands, warehouses]);
 
   // --- ASSURANCE SAVE ---
   const handleSaveAssurance = (e) => {
@@ -205,22 +231,53 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
     setTimeout(() => setAssuranceSavedToast(false), 3000);
   };
 
-  // --- PRODUCT CRUD MODAL SUBMIT ---
+  // --- PRODUCT CRUD MODAL SUBMIT (Supports "Other" for Category, Brand & Warehouse) ---
   const handleProductSubmit = (e) => {
     e.preventDefault();
     const form = e.target;
+
+    // Resolve Category
+    let finalCategory = form.category?.value;
+    if (finalCategory === '__other__') {
+      finalCategory = form.customCategory?.value?.trim() || 'Other';
+    }
+
+    // Resolve Brand
+    let finalBrand = form.brand?.value;
+    if (form.brandSelect && form.brandSelect.value === '__other__') {
+      finalBrand = form.customBrand?.value?.trim() || 'Other';
+    } else if (form.brandSelect && form.brandSelect.value) {
+      finalBrand = form.brandSelect.value;
+    }
+
+    // Resolve Warehouse & Origin
+    let finalWarehouse = '';
+    if (form.warehouseSelect) {
+      if (form.warehouseSelect.value === '__other__') {
+        finalWarehouse = form.customWarehouse?.value?.trim() || '';
+      } else {
+        finalWarehouse = form.warehouseSelect.value;
+      }
+    } else if (form.warehouse) {
+      finalWarehouse = form.warehouse.value;
+    }
+
+    const rawOrigin = form.origin?.value?.trim() || '';
+    const finalOrigin = rawOrigin || finalWarehouse || 'Kerala, India';
+
     const productPayload = {
       name: form.name.value,
       sku: form.sku.value,
-      category: form.category.value,
-      brand: form.brand.value,
+      category: finalCategory,
+      brand: finalBrand,
       packSize: form.packSize.value,
       moq: form.moq.value,
       wholesaleRange: form.wholesaleRange.value,
       mrp: form.mrp.value,
       stockStatus: form.stockStatus.value,
       shelfLife: form.shelfLife.value,
-      origin: form.origin.value,
+      origin: finalOrigin,
+      warehouse: finalWarehouse || finalOrigin || 'Not Available',
       image: modalImageUrl || form.image?.value || 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80',
       description: form.description.value,
       isFastMoving: form.isFastMoving ? form.isFastMoving.checked : true,
@@ -234,6 +291,39 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
     }
     setModalType(null);
     setEditingItem(null);
+  };
+
+  // --- WAREHOUSE CRUD MODAL SUBMIT ---
+  const handleWarehouseSubmit = (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const featuresRaw = form.features?.value || '';
+    const featuresList = featuresRaw
+      .split(/[\n,]+/)
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    const warehousePayload = {
+      name: form.name.value.trim(),
+      city: form.city.value.trim(),
+      capacity: form.capacity.value.trim(),
+      coverage: form.coverage.value.trim(),
+      dispatchTime: form.dispatchTime.value.trim(),
+      address: form.address?.value?.trim() || '',
+      phone: form.phone?.value?.trim() || '',
+      email: form.email?.value?.trim() || '',
+      features: featuresList.length > 0 ? featuresList : ['Standard WMS storage', 'Fleet access']
+    };
+
+    if (editingItem && editingItem.id) {
+      dataService.updateWarehouse(editingItem.id, warehousePayload);
+    } else {
+      dataService.addWarehouse(warehousePayload);
+    }
+    setModalType(null);
+    setEditingItem(null);
+    setWarehouseSavedToast(true);
+    setTimeout(() => setWarehouseSavedToast(false), 3000);
   };
 
   // --- CATEGORY CRUD MODAL SUBMIT ---
@@ -653,6 +743,21 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
             <span className="text-[10px] font-mono opacity-60 ml-2">{stats.totalBrands}</span>
           </button>
 
+          <button
+            onClick={() => setActiveTab('warehouses')}
+            className={`flex-shrink-0 md:w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
+              activeTab === 'warehouses'
+                ? 'bg-[#D4AF37] text-[#101010] font-bold shadow-md'
+                : 'text-[#F5F0E6]/70 hover:bg-[#202020] hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Building2 className="w-4 h-4 flex-shrink-0" />
+              <span className="whitespace-nowrap">Warehouses &amp; Hubs</span>
+            </div>
+            <span className="text-[10px] font-mono opacity-60 ml-2">{warehouses.length}</span>
+          </button>
+
           {/* GROUP 3: LEGAL & GOVERNANCE */}
           <div className="hidden md:block my-2 h-px bg-[#262626]"></div>
           <div className="hidden md:flex items-center justify-between px-3 py-1.5 text-[10px] font-mono uppercase tracking-widest text-[#D4AF37] font-bold">
@@ -824,11 +929,13 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                 <div className="p-5 rounded-xl bg-[#141414] border border-[#2C2C2C] shadow">
                   <div className="flex items-center justify-between text-[#F5F0E6]/60 mb-2">
                     <span className="text-[11px] font-mono uppercase tracking-wider">Statutory Health</span>
-                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                    <ShieldCheck className={`w-4 h-4 ${assurance.fssaiNumber || assurance.gstNumber ? 'text-emerald-400' : 'text-neutral-500'}`} />
                   </div>
-                  <div className="text-lg font-bold text-white font-mono">FSSAI &amp; GST Valid</div>
-                  <div className="text-[10px] font-mono text-emerald-400 mt-1">
-                    Lic: {assurance.fssaiNumber || '11322001000845'}
+                  <div className="text-lg font-bold text-white font-mono">
+                    {assurance.fssaiNumber || assurance.gstNumber ? 'FSSAI & GST Active' : 'Licenses: Not Available'}
+                  </div>
+                  <div className={`text-[10px] font-mono mt-1 ${assurance.fssaiNumber ? 'text-emerald-400' : 'text-neutral-500 italic'}`}>
+                    Lic: {assurance.fssaiNumber || 'Not Available'}
                   </div>
                 </div>
 
@@ -1352,10 +1459,9 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                     </label>
                     <input
                       type="text"
-                      required
-                      value={assuranceForm.fssaiNumber}
+                      value={assuranceForm.fssaiNumber || ''}
                       onChange={(e) => setAssuranceForm({ ...assuranceForm, fssaiNumber: e.target.value })}
-                      placeholder="11322001000845"
+                      placeholder="e.g. 14-digit FSSAI number (Leave empty if not available)"
                       className="w-full px-3.5 py-2.5 bg-[#1C1C1C] border border-[#343434] focus:border-[#D4AF37] rounded-lg text-white font-mono text-xs focus:outline-none"
                     />
                     <span className="text-[10px] text-[#F5F0E6]/40 font-mono mt-1 block">Printed on all food invoices and product labels</span>
@@ -1367,13 +1473,12 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                     </label>
                     <input
                       type="text"
-                      required
-                      value={assuranceForm.gstNumber}
+                      value={assuranceForm.gstNumber || ''}
                       onChange={(e) => setAssuranceForm({ ...assuranceForm, gstNumber: e.target.value })}
-                      placeholder="32AAECM4912L1ZT"
+                      placeholder="e.g. 15-digit GSTIN (Leave empty if not available)"
                       className="w-full px-3.5 py-2.5 bg-[#1C1C1C] border border-[#343434] focus:border-[#D4AF37] rounded-lg text-white font-mono text-xs focus:outline-none"
                     />
-                    <span className="text-[10px] text-[#F5F0E6]/40 font-mono mt-1 block">Kerala State Registration Jurisdiction</span>
+                    <span className="text-[10px] text-[#F5F0E6]/40 font-mono mt-1 block">State Registration Jurisdiction</span>
                   </div>
 
                   <div>
@@ -1382,10 +1487,9 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                     </label>
                     <input
                       type="text"
-                      required
-                      value={assuranceForm.isoCert}
+                      value={assuranceForm.isoCert || ''}
                       onChange={(e) => setAssuranceForm({ ...assuranceForm, isoCert: e.target.value })}
-                      placeholder="ISO 22000:2018"
+                      placeholder="e.g. ISO 22000:2018 (Leave empty if not available)"
                       className="w-full px-3.5 py-2.5 bg-[#1C1C1C] border border-[#343434] focus:border-[#D4AF37] rounded-lg text-white font-mono text-xs focus:outline-none"
                     />
                     <span className="text-[10px] text-[#F5F0E6]/40 font-mono mt-1 block">Global Food Safety Management Accreditation</span>
@@ -1735,7 +1839,15 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                             </td>
                             <td className="p-3.5">
                               <div className="font-bold text-white max-w-xs">{prod.name}</div>
-                              <div className="text-[10px] font-mono text-[#F5F0E6]/50">{prod.brand}</div>
+                              <div className="text-[10px] font-mono text-[#F5F0E6]/50 flex items-center flex-wrap gap-2 mt-0.5">
+                                <span>{prod.brand}</span>
+                                {prod.warehouse && prod.warehouse !== 'Not Available' && (
+                                  <span className="text-[#D4AF37] flex items-center gap-1 font-semibold">
+                                    <Building2 className="w-2.5 h-2.5" />
+                                    <span>{prod.warehouse}</span>
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="p-3.5 capitalize font-mono text-[11px] text-[#F5F0E6]/70">
                               {prod.category}
@@ -1880,6 +1992,218 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                       </div>
                     </div>
                   ))}
+              </div>
+
+            </div>
+          )}
+
+          {/* ---------------- 9B. WAREHOUSING & REGIONAL HUBS TAB ---------------- */}
+          {activeTab === 'warehouses' && (
+            <div className="space-y-6 animate-fadeIn">
+              
+              {/* Header Title & Actions */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#2C2C2C]">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#D4AF37] bg-[#D4AF37]/10 px-2 py-0.5 rounded border border-[#D4AF37]/30">
+                      Supply Chain Infrastructure
+                    </span>
+                    <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span>Live Site Synchronized</span>
+                    </span>
+                  </div>
+                  <h1 className="font-editorial text-2xl sm:text-3xl font-black text-white">
+                    Warehousing &amp; Logistics Hubs
+                  </h1>
+                  <p className="text-xs text-[#F5F0E6]/60 font-medium">
+                    Configure regional fulfillment centers, cold-chain depots, distribution coverage zones, and turnaround SLAs.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => { setEditingItem(null); setModalType('warehouse'); }}
+                    className="px-3.5 py-2 bg-[#D4AF37] hover:bg-[#b89528] text-[#101010] text-xs font-bold font-mono rounded-lg flex items-center gap-1.5 shadow transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Warehouse Hub</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Toast if saved */}
+              {warehouseSavedToast && (
+                <div className="p-3 bg-emerald-950/80 border border-emerald-500/50 rounded-lg text-emerald-300 text-xs font-mono flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span>Warehouse Hub saved and synchronized across live public portals!</span>
+                </div>
+              )}
+
+              {/* KPI Strip */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-4 rounded-xl bg-[#141414] border border-[#2C2C2C]">
+                  <div className="text-[10px] font-mono text-[#D4AF37] uppercase tracking-wider mb-1">Active Hubs</div>
+                  <div className="text-2xl font-black text-white font-mono">{warehouses.length}</div>
+                  <div className="text-[10px] text-zinc-400 mt-1">Regional depots</div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-[#141414] border border-[#2C2C2C]">
+                  <div className="text-[10px] font-mono text-[#D4AF37] uppercase tracking-wider mb-1">Total Capacity</div>
+                  <div className="text-2xl font-black text-white font-mono">
+                    {warehouses.length > 0 ? `${warehouses.reduce((acc, w) => {
+                      const num = parseInt(w.capacity?.replace(/[^0-9]/g, '')) || 0;
+                      return acc + num;
+                    }, 0).toLocaleString()} Sq. Ft.` : 'Not Available'}
+                  </div>
+                  <div className="text-[10px] text-zinc-400 mt-1">Combined storage area</div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-[#141414] border border-[#2C2C2C]">
+                  <div className="text-[10px] font-mono text-[#D4AF37] uppercase tracking-wider mb-1">Delivery SLA</div>
+                  <div className="text-2xl font-black text-white font-mono">24 - 48 Hrs</div>
+                  <div className="text-[10px] text-emerald-400 mt-1">High-velocity dispatch</div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-[#141414] border border-[#2C2C2C]">
+                  <div className="text-[10px] font-mono text-[#D4AF37] uppercase tracking-wider mb-1">Assigned SKUs</div>
+                  <div className="text-2xl font-black text-white font-mono">
+                    {products.filter(p => p.warehouse && p.warehouse !== 'Not Available').length} / {products.length}
+                  </div>
+                  <div className="text-[10px] text-zinc-400 mt-1">Routed to regional hubs</div>
+                </div>
+              </div>
+
+              {/* Warehouse Cards Grid */}
+              <div className="grid sm:grid-cols-2 gap-4">
+                {warehouses.map((hub) => (
+                  <div 
+                    key={hub.id} 
+                    className="p-5 bg-[#141414] border border-[#2C2C2C] hover:border-[#D4AF37]/50 rounded-xl shadow space-y-4 flex flex-col justify-between transition-colors"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <span className="w-10 h-10 rounded-lg bg-[#202020] border border-[#343434] flex items-center justify-center text-[#D4AF37] font-bold flex-shrink-0">
+                            <Building2 className="w-5 h-5" />
+                          </span>
+                          <div>
+                            <div className="flex items-center gap-1.5 text-[11px] text-[#D4AF37] font-mono font-semibold">
+                              <MapPin className="w-3.5 h-3.5" />
+                              <span className={hub.city ? "" : "italic text-zinc-500"}>{hub.city || 'Not Available'}</span>
+                            </div>
+                            <h3 className="font-bold text-base text-white mt-0.5 leading-snug">
+                              {hub.name || 'Not Available'}
+                            </h3>
+                          </div>
+                        </div>
+
+                        <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/30 flex-shrink-0">
+                          {hub.capacity || 'Not Available'}
+                        </span>
+                      </div>
+
+                      {/* Coverage & SLA strip */}
+                      <div className="p-3 bg-[#1C1C1C] rounded-lg border border-[#262626] grid grid-cols-2 gap-3 text-xs font-mono">
+                        <div>
+                          <span className="text-zinc-500 block text-[9px] uppercase font-bold">Route Coverage</span>
+                          <span className={hub.coverage ? "text-[#F5F0E6] font-bold" : "italic text-zinc-500"}>
+                            {hub.coverage || 'Not Available'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-zinc-500 block text-[9px] uppercase font-bold">Dispatch SLA</span>
+                          <span className="text-[#F5F0E6] font-bold flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-[#D4AF37]" />
+                            <span className={hub.dispatchTime ? "" : "italic text-zinc-500"}>
+                              {hub.dispatchTime || 'Not Available'}
+                            </span>
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Contact & Address if present */}
+                      {(hub.address || hub.phone || hub.email) && (
+                        <div className="text-[11px] text-zinc-400 font-mono space-y-1 pt-1">
+                          {hub.address && (
+                            <div className="flex items-start gap-1.5">
+                              <MapPin className="w-3 h-3 text-zinc-500 mt-0.5 flex-shrink-0" />
+                              <span>{hub.address}</span>
+                            </div>
+                          )}
+                          {hub.phone && (
+                            <div className="flex items-center gap-1.5">
+                              <Phone className="w-3 h-3 text-zinc-500 flex-shrink-0" />
+                              <span>{hub.phone}</span>
+                            </div>
+                          )}
+                          {hub.email && (
+                            <div className="flex items-center gap-1.5">
+                              <Mail className="w-3 h-3 text-zinc-500 flex-shrink-0" />
+                              <span>{hub.email}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Features */}
+                      {Array.isArray(hub.features) && hub.features.length > 0 && (
+                        <div className="space-y-1.5 pt-2 border-t border-[#262626]">
+                          <span className="text-[9px] font-mono uppercase tracking-wider text-zinc-500 block">Hub Capabilities</span>
+                          {hub.features.map((feature, fIdx) => (
+                            <div key={fIdx} className="flex items-center gap-2 text-xs text-zinc-300">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                              <span>{feature}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-between pt-3 border-t border-[#262626] mt-4">
+                      <span className="text-[10px] font-mono text-zinc-500">ID: {hub.id}</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => { setEditingItem(hub); setModalType('warehouse'); }}
+                          className="px-2.5 py-1.5 bg-[#202020] hover:bg-[#343434] text-white text-xs font-mono font-medium rounded flex items-center gap-1.5 transition-colors cursor-pointer"
+                          title="Edit Warehouse Hub"
+                        >
+                          <Edit className="w-3.5 h-3.5 text-[#D4AF37]" />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm(`Delete warehouse hub "${hub.name}"? This will also remove it from the live public network.`)) {
+                              dataService.deleteWarehouse(hub.id);
+                            }
+                          }}
+                          className="p-1.5 bg-[#202020] hover:bg-red-900/60 text-red-400 hover:text-white rounded transition-colors cursor-pointer"
+                          title="Delete Warehouse Hub"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {warehouses.length === 0 && (
+                  <div className="col-span-full p-12 bg-[#141414] border-2 border-dashed border-[#2C2C2C] rounded-2xl text-center space-y-3">
+                    <Building2 className="w-12 h-12 text-[#D4AF37]/50 mx-auto" />
+                    <h3 className="font-editorial text-xl font-bold text-white">No Warehouse Hubs Added Yet</h3>
+                    <p className="text-xs text-zinc-400 max-w-md mx-auto">
+                      Click below to add your regional logistics hubs, cold stores, and cross-docking facilities.
+                    </p>
+                    <button
+                      onClick={() => { setEditingItem(null); setModalType('warehouse'); }}
+                      className="mt-2 px-4 py-2 bg-[#D4AF37] hover:bg-[#b89528] text-[#101010] font-bold text-xs font-mono rounded-lg inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add First Warehouse Hub</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
             </div>
@@ -2065,7 +2389,7 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                             required
                             value={contactForm.whatsapp || ''}
                             onChange={(e) => setContactForm({ ...contactForm, whatsapp: e.target.value })}
-                            placeholder="+91 9747 888 230"
+                            placeholder="+91 XXXXX XXXXX"
                             className="w-full pl-3.5 pr-8 py-2.5 bg-[#1C1C1C] border border-[#343434] focus:border-[#D4AF37] rounded-lg text-white font-mono text-xs focus:outline-none transition-colors"
                           />
                           <MessageSquare className="w-3.5 h-3.5 text-emerald-400 absolute right-3 top-3" />
@@ -2084,7 +2408,7 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                             required
                             value={contactForm.call || ''}
                             onChange={(e) => setContactForm({ ...contactForm, call: e.target.value })}
-                            placeholder="+91 483 273 4567"
+                            placeholder="+91 XXXXX XXXXX"
                             className="w-full pl-3.5 pr-8 py-2.5 bg-[#1C1C1C] border border-[#343434] focus:border-[#D4AF37] rounded-lg text-white font-mono text-xs focus:outline-none transition-colors"
                           />
                           <Phone className="w-3.5 h-3.5 text-[#D4AF37] absolute right-3 top-3" />
@@ -2103,7 +2427,7 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                           required
                           value={contactForm.emergensy || ''}
                           onChange={(e) => setContactForm({ ...contactForm, emergensy: e.target.value })}
-                          placeholder="+91 9747 888 231"
+                          placeholder="+91 XXXXX XXXXX"
                           className="w-full px-3.5 py-2.5 bg-[#1F1414] border border-red-900/60 focus:border-red-500 rounded-lg text-white font-mono text-xs focus:outline-none transition-colors"
                         />
                         <span className="text-[10px] text-red-400/70 font-mono mt-1 block">Critical 24/7 channel for transit cold-chain alarms, road delivery issues, and urgent trade alerts</span>
@@ -2131,7 +2455,7 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                           required
                           value={contactForm.email || ''}
                           onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                          placeholder="malabarprime.co@gmail.com"
+                          placeholder="orders@yourdomain.com"
                           className="w-full px-3.5 py-2.5 bg-[#1C1C1C] border border-[#343434] focus:border-[#D4AF37] rounded-lg text-white font-mono text-xs focus:outline-none transition-colors"
                         />
                         <span className="text-[10px] text-[#F5F0E6]/40 font-mono mt-1 block">Destination for official purchase orders &amp; RFQs</span>
@@ -2147,7 +2471,7 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                           required
                           value={contactForm.supportEmail || ''}
                           onChange={(e) => setContactForm({ ...contactForm, supportEmail: e.target.value })}
-                          placeholder="support@malabarprime.com"
+                          placeholder="support@yourdomain.com"
                           className="w-full px-3.5 py-2.5 bg-[#1C1C1C] border border-[#343434] focus:border-[#D4AF37] rounded-lg text-white font-mono text-xs focus:outline-none transition-colors"
                         />
                         <span className="text-[10px] text-[#F5F0E6]/40 font-mono mt-1 block">Dedicated to SLA claims, credit notes, and partner support</span>
@@ -2175,7 +2499,7 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                           required
                           value={contactForm.location || ''}
                           onChange={(e) => setContactForm({ ...contactForm, location: e.target.value })}
-                          placeholder="Malappuram - Calicut Supply Corridor, Kerala, India"
+                          placeholder="e.g. Kozhikode - Malappuram Supply Corridor, Kerala, India"
                           className="w-full px-3.5 py-2.5 bg-[#1C1C1C] border border-[#343434] focus:border-[#D4AF37] rounded-lg text-white font-sans text-xs focus:outline-none transition-colors"
                         />
                         <span className="text-[10px] text-[#F5F0E6]/40 font-mono mt-1 block">Regional operating perimeter shown on banners and maps</span>
@@ -2191,7 +2515,7 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                           required
                           value={contactForm.adress || ''}
                           onChange={(e) => setContactForm({ ...contactForm, adress: e.target.value })}
-                          placeholder="Door No. 12/480-A, Prime Logistics Park, NH 66 bypass, Malappuram, Kerala - 676505"
+                          placeholder="e.g. Master Logistics Depot, National Highway Bypass, Kerala - 673014"
                           className="w-full px-3.5 py-2.5 bg-[#1C1C1C] border border-[#343434] focus:border-[#D4AF37] rounded-lg text-white font-sans text-xs focus:outline-none transition-colors leading-relaxed"
                         />
                         <span className="text-[10px] text-[#F5F0E6]/40 font-mono mt-1 block">Full physical address for billing, dispatch receipts &amp; statutory audit</span>
@@ -2218,18 +2542,18 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                     <button
                       type="button"
                       onClick={() => {
-                        const defaults = {
-                          contact: "Malabar Prime Commercial Desk",
-                          whatsapp: "+91 9747 888 230",
-                          call: "+91 483 273 4567",
-                          emergensy: "+91 9747 888 231",
-                          email: "malabarprime.co@gmail.com",
-                          supportEmail: "support@malabarprime.com",
-                          location: "Malappuram - Calicut Supply Corridor, Kerala, India",
-                          adress: "Door No. 12/480-A, Prime Logistics Park, NH 66 bypass, Malappuram, Kerala - 676505",
-                          workingHours: "Mon - Sat: 8:00 AM - 8:00 PM IST | Reefer Dispatch 24/7"
+                        const emptyDefaults = {
+                          contact: "",
+                          whatsapp: "",
+                          call: "",
+                          emergensy: "",
+                          email: "",
+                          supportEmail: "",
+                          location: "",
+                          adress: "",
+                          workingHours: ""
                         };
-                        setContactForm(defaults);
+                        setContactForm(emptyDefaults);
                       }}
                       className="px-3.5 py-2 bg-[#202020] hover:bg-[#2C2C2C] text-[#F5F0E6]/70 hover:text-white rounded-lg text-xs font-mono flex items-center gap-1.5 transition-colors"
                     >
@@ -2263,10 +2587,10 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                           Enterprise Profile
                         </div>
                         <h3 className="font-bold text-lg text-white">
-                          {contactForm.contact || 'Malabar Prime Commercial Desk'}
+                          {contactForm.contact || <span className="text-neutral-400 italic font-mono text-xs">Not Available</span>}
                         </h3>
                         <p className="text-xs text-[#F5F0E6]/60 mt-0.5">
-                          {contactForm.location || 'Malappuram - Calicut Supply Corridor, Kerala, India'}
+                          {contactForm.location || <span className="text-neutral-400 italic font-mono text-xs">Not Available</span>}
                         </p>
                       </div>
 
@@ -2278,7 +2602,7 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                             24/7 Logistics &amp; Emergency Line
                           </div>
                           <div className="text-sm font-mono font-bold text-white mt-0.5">
-                            {contactForm.emergensy || '+91 9747 888 231'}
+                            {contactForm.emergensy || <span className="text-red-300/60 italic font-mono text-xs">Not Available</span>}
                           </div>
                           <div className="text-[10px] text-red-200/70 font-sans mt-0.5">
                             Instant escalation for temperature excursion &amp; highway dispatch.
@@ -2294,15 +2618,21 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                             <Phone className="w-4 h-4 text-[#D4AF37]" />
                             <div>
                               <div className="text-[10px] text-[#F5F0E6]/50">Voice Calling Line</div>
-                              <div className="text-white font-bold">{contactForm.call || '+91 483 273 4567'}</div>
+                              <div className="text-white font-bold">{contactForm.call || <span className="text-neutral-400 italic text-xs font-normal">Not Available</span>}</div>
                             </div>
                           </div>
-                          <a
-                            href={`tel:${(contactForm.call || '').replace(/\s+/g, '')}`}
-                            className="px-2.5 py-1 bg-[#242424] hover:bg-[#D4AF37] hover:text-[#101010] text-[#D4AF37] text-[10px] rounded font-bold uppercase transition-colors"
-                          >
-                            Call
-                          </a>
+                          {contactForm.call ? (
+                            <a
+                              href={`tel:${contactForm.call.replace(/\s+/g, '')}`}
+                              className="px-2.5 py-1 bg-[#242424] hover:bg-[#D4AF37] hover:text-[#101010] text-[#D4AF37] text-[10px] rounded font-bold uppercase transition-colors"
+                            >
+                              Call
+                            </a>
+                          ) : (
+                            <span className="px-2.5 py-1 bg-[#242424]/40 text-neutral-500 text-[10px] rounded font-mono uppercase cursor-not-allowed">
+                              Disabled
+                            </span>
+                          )}
                         </div>
 
                         <div className="p-3 bg-[#1A1A1A] rounded-lg border border-[#2C2C2C] flex items-center justify-between">
@@ -2310,17 +2640,23 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                             <MessageSquare className="w-4 h-4 text-emerald-400" />
                             <div>
                               <div className="text-[10px] text-[#F5F0E6]/50">WhatsApp Order Desk</div>
-                              <div className="text-white font-bold">{contactForm.whatsapp || '+91 9747 888 230'}</div>
+                              <div className="text-white font-bold">{contactForm.whatsapp || <span className="text-neutral-400 italic text-xs font-normal">Not Available</span>}</div>
                             </div>
                           </div>
-                          <a
-                            href={`https://wa.me/${(contactForm.whatsapp || '').replace(/[^0-9]/g, '')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-2.5 py-1 bg-emerald-950 text-emerald-300 hover:bg-emerald-600 hover:text-white text-[10px] rounded font-bold uppercase transition-colors border border-emerald-800"
-                          >
-                            Chat
-                          </a>
+                          {contactForm.whatsapp ? (
+                            <a
+                              href={`https://wa.me/${contactForm.whatsapp.replace(/[^0-9]/g, '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2.5 py-1 bg-emerald-950 text-emerald-300 hover:bg-emerald-600 hover:text-white text-[10px] rounded font-bold uppercase transition-colors border border-emerald-800"
+                            >
+                              Chat
+                            </a>
+                          ) : (
+                            <span className="px-2.5 py-1 bg-[#242424]/40 text-neutral-500 text-[10px] rounded font-mono uppercase cursor-not-allowed border border-neutral-800">
+                              Disabled
+                            </span>
+                          )}
                         </div>
 
                         <div className="p-3 bg-[#1A1A1A] rounded-lg border border-[#2C2C2C] flex items-center justify-between">
@@ -2328,15 +2664,21 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                             <Mail className="w-4 h-4 text-[#D4AF37]" />
                             <div className="max-w-[200px] truncate">
                               <div className="text-[10px] text-[#F5F0E6]/50">Commercial Orders Email</div>
-                              <div className="text-white font-bold truncate">{contactForm.email || 'malabarprime.co@gmail.com'}</div>
+                              <div className="text-white font-bold truncate">{contactForm.email || <span className="text-neutral-400 italic text-xs font-normal">Not Available</span>}</div>
                             </div>
                           </div>
-                          <a
-                            href={`mailto:${contactForm.email || 'malabarprime.co@gmail.com'}`}
-                            className="px-2.5 py-1 bg-[#242424] hover:bg-[#D4AF37] hover:text-[#101010] text-[#D4AF37] text-[10px] rounded font-bold uppercase transition-colors"
-                          >
-                            Email
-                          </a>
+                          {contactForm.email ? (
+                            <a
+                              href={`mailto:${contactForm.email}`}
+                              className="px-2.5 py-1 bg-[#242424] hover:bg-[#D4AF37] hover:text-[#101010] text-[#D4AF37] text-[10px] rounded font-bold uppercase transition-colors"
+                            >
+                              Email
+                            </a>
+                          ) : (
+                            <span className="px-2.5 py-1 bg-[#242424]/40 text-neutral-500 text-[10px] rounded font-mono uppercase cursor-not-allowed">
+                              Disabled
+                            </span>
+                          )}
                         </div>
 
                         <div className="p-3 bg-[#1A1A1A] rounded-lg border border-[#2C2C2C] flex items-center justify-between">
@@ -2344,15 +2686,21 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                             <Headphones className="w-4 h-4 text-[#D4AF37]" />
                             <div className="max-w-[200px] truncate">
                               <div className="text-[10px] text-[#F5F0E6]/50">Support &amp; Claims Email</div>
-                              <div className="text-white font-bold truncate">{contactForm.supportEmail || 'support@malabarprime.com'}</div>
+                              <div className="text-white font-bold truncate">{contactForm.supportEmail || <span className="text-neutral-400 italic text-xs font-normal">Not Available</span>}</div>
                             </div>
                           </div>
-                          <a
-                            href={`mailto:${contactForm.supportEmail || 'support@malabarprime.com'}`}
-                            className="px-2.5 py-1 bg-[#242424] hover:bg-[#D4AF37] hover:text-[#101010] text-[#D4AF37] text-[10px] rounded font-bold uppercase transition-colors"
-                          >
-                            Claims
-                          </a>
+                          {contactForm.supportEmail ? (
+                            <a
+                              href={`mailto:${contactForm.supportEmail}`}
+                              className="px-2.5 py-1 bg-[#242424] hover:bg-[#D4AF37] hover:text-[#101010] text-[#D4AF37] text-[10px] rounded font-bold uppercase transition-colors"
+                            >
+                              Claims
+                            </a>
+                          ) : (
+                            <span className="px-2.5 py-1 bg-[#242424]/40 text-neutral-500 text-[10px] rounded font-mono uppercase cursor-not-allowed">
+                              Disabled
+                            </span>
+                          )}
                         </div>
 
                       </div>
@@ -2364,10 +2712,10 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                           <span>Warehouse &amp; Invoicing Address</span>
                         </div>
                         <p className="text-xs text-[#F5F0E6]/80 font-sans leading-relaxed">
-                          {contactForm.adress || 'Door No. 12/480-A, Prime Logistics Park, NH 66 bypass, Malappuram, Kerala - 676505'}
+                          {contactForm.adress || <span className="text-neutral-400 italic font-mono text-xs">Not Available</span>}
                         </p>
                         <div className="text-[10px] font-mono text-[#F5F0E6]/40 pt-1 border-t border-[#262626]">
-                          Hours: {contactForm.workingHours || 'Mon - Sat: 8:00 AM - 8:00 PM IST'}
+                          Hours: {contactForm.workingHours || 'Not Available'}
                         </div>
                       </div>
 

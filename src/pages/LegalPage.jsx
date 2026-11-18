@@ -32,12 +32,16 @@ const POLICY_ICONS = {
 
 export default function LegalPage({ initialPolicy = 'terms', onNavigate }) {
   const [policies, setPolicies] = useState(() => dataService.getPolicies());
+  const [contactInfo, setContactInfo] = useState(() => dataService.getCompanyContact());
+  const [assurance, setAssurance] = useState(() => dataService.getAssurance());
   const [activeTab, setActiveTab] = useState(initialPolicy);
   const [copiedLink, setCopiedLink] = useState(false);
 
   useEffect(() => {
     const unsub = dataService.subscribe(() => {
       setPolicies(dataService.getPolicies());
+      setContactInfo(dataService.getCompanyContact());
+      setAssurance(dataService.getAssurance());
     });
     return unsub;
   }, []);
@@ -193,19 +197,27 @@ export default function LegalPage({ initialPolicy = 'terms', onNavigate }) {
               <div className="space-y-2 text-xs font-mono">
                 <div className="flex justify-between py-1 border-b border-[#343434]">
                   <span className="text-[#F5F0E6]/60">FSSAI Central Lic:</span>
-                  <strong className="text-[#D4AF37]">{COMPANY_INFO.fssaiNumber}</strong>
+                  <strong className={assurance?.fssaiNumber ? "text-[#D4AF37]" : "italic text-neutral-400"}>
+                    {assurance?.fssaiNumber || 'Not Available'}
+                  </strong>
                 </div>
                 <div className="flex justify-between py-1 border-b border-[#343434]">
                   <span className="text-[#F5F0E6]/60">GSTIN / State:</span>
-                  <strong className="text-white">{COMPANY_INFO.gstNumber}</strong>
+                  <strong className={assurance?.gstNumber ? "text-white" : "italic text-neutral-400"}>
+                    {assurance?.gstNumber || 'Not Available'}
+                  </strong>
                 </div>
                 <div className="flex justify-between py-1 border-b border-[#343434]">
                   <span className="text-[#F5F0E6]/60">Food Safety Cert:</span>
-                  <strong className="text-white">{COMPANY_INFO.isoCert}</strong>
+                  <strong className={assurance?.isoCert ? "text-white" : "italic text-neutral-400"}>
+                    {assurance?.isoCert || 'Not Available'}
+                  </strong>
                 </div>
                 <div className="flex justify-between py-1">
                   <span className="text-[#F5F0E6]/60">Headquarters:</span>
-                  <strong className="text-[#F5F0E6]">Kozhikode, Kerala</strong>
+                  <strong className={contactInfo?.location ? "text-[#F5F0E6]" : "italic text-neutral-400"}>
+                    {contactInfo?.location || 'Not Available'}
+                  </strong>
                 </div>
               </div>
             </div>
@@ -219,29 +231,52 @@ export default function LegalPage({ initialPolicy = 'terms', onNavigate }) {
                 For damage claims, GST credit notes, or contract clarifications:
               </p>
               <div className="space-y-2 text-xs font-bold">
-                <a 
-                  href={`tel:${COMPANY_INFO.phone}`} 
-                  className="flex items-center gap-2 text-[#101010] hover:text-[#D4AF37] transition-colors"
-                >
-                  <Phone className="w-3.5 h-3.5 text-[#D4AF37]" />
-                  <span>{COMPANY_INFO.phone}</span>
-                </a>
-                <a 
-                  href={`mailto:${COMPANY_INFO.email}`} 
-                  className="flex items-center gap-2 text-[#101010] hover:text-[#D4AF37] transition-colors"
-                >
-                  <Mail className="w-3.5 h-3.5 text-[#D4AF37]" />
-                  <span>{COMPANY_INFO.email}</span>
-                </a>
-                <a 
-                  href={`https://wa.me/${COMPANY_INFO.whatsapp}?text=Hello%20Malabar%20Prime%2C%20inquiry%20regarding%20commercial%20policies.`} 
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-[#101010] hover:text-[#D4AF37] transition-colors"
-                >
-                  <MessageSquare className="w-3.5 h-3.5 text-[#D4AF37]" />
-                  <span>WhatsApp Claims Hotline</span>
-                </a>
+                {contactInfo?.call ? (
+                  <a 
+                    href={`tel:${contactInfo.call.replace(/\s+/g, '')}`} 
+                    className="flex items-center gap-2 text-[#101010] hover:text-[#D4AF37] transition-colors"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-[#D4AF37]" />
+                    <span>{contactInfo.call}</span>
+                  </a>
+                ) : (
+                  <div className="flex items-center gap-2 text-neutral-400">
+                    <Phone className="w-3.5 h-3.5 text-neutral-400" />
+                    <span className="font-mono italic text-[11px]">Phone: Not Available</span>
+                  </div>
+                )}
+
+                {contactInfo?.email ? (
+                  <a 
+                    href={`mailto:${contactInfo.email}`} 
+                    className="flex items-center gap-2 text-[#101010] hover:text-[#D4AF37] transition-colors"
+                  >
+                    <Mail className="w-3.5 h-3.5 text-[#D4AF37]" />
+                    <span>{contactInfo.email}</span>
+                  </a>
+                ) : (
+                  <div className="flex items-center gap-2 text-neutral-400">
+                    <Mail className="w-3.5 h-3.5 text-neutral-400" />
+                    <span className="font-mono italic text-[11px]">Email: Not Available</span>
+                  </div>
+                )}
+
+                {contactInfo?.whatsapp ? (
+                  <a 
+                    href={`https://wa.me/${contactInfo.whatsapp.replace(/[^0-9]/g, '')}?text=Hello%20Malabar%20Prime%2C%20inquiry%20regarding%20commercial%20policies.`} 
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-[#101010] hover:text-[#D4AF37] transition-colors"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5 text-[#D4AF37]" />
+                    <span>WhatsApp Claims Hotline</span>
+                  </a>
+                ) : (
+                  <div className="flex items-center gap-2 text-neutral-400">
+                    <MessageSquare className="w-3.5 h-3.5 text-neutral-400" />
+                    <span className="font-mono italic text-[11px]">WhatsApp: Not Available</span>
+                  </div>
+                )}
               </div>
             </div>
           </aside>
@@ -291,7 +326,7 @@ export default function LegalPage({ initialPolicy = 'terms', onNavigate }) {
                 <span>Authorized Commercial Wholesale Policy</span>
               </div>
               <p className="text-xs text-[#343434] leading-relaxed font-medium">
-                Issued and maintained under the authority of the Board of Directors, <strong>Malabar Prime Distributions</strong>, NH-66 Logistics Corridor, Ramanattukara, Kozhikode, Kerala 673633. For customized distributor agreements or master supply contracts, contact our commercial trade desk directly.
+                Issued and maintained under the authority of the Board of Directors, <strong>Malabar Prime Distributions</strong>{contactInfo?.adress || contactInfo?.location ? `, ${contactInfo.adress || contactInfo.location}` : ''}. For customized distributor agreements or master supply contracts, contact our commercial trade desk directly.
               </p>
             </div>
 

@@ -230,7 +230,7 @@ export default function PartnerPage({ initialPartnerType = 'retailer' }) {
                     required
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="+91 98470 XXXXX"
+                    placeholder="+91 XXXXX XXXXX"
                     className="w-full px-3.5 py-2.5 bg-[#F5F0E6] border border-[#101010]/30 rounded text-xs font-medium focus:border-[#101010] outline-none"
                   />
                 </div>

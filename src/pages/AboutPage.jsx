@@ -48,7 +48,7 @@ export default function AboutPage({ onNavigate, onOpenPartnerModal }) {
                 Our Company
               </h2>
               <p className="text-xs sm:text-sm text-[#343434] leading-relaxed font-medium mb-4">
-                Headquartered in Kozhikode with 4 active temperature-controlled multi-compartment regional depot warehouses across South India. Operating under strict statutory compliance with valid <strong>FSSAI License {assurance.fssaiNumber || COMPANY_INFO.fssaiNumber}</strong> and <strong>GSTIN {assurance.gstNumber || COMPANY_INFO.gstNumber}</strong>.
+                Headquartered in Kozhikode with 4 active temperature-controlled multi-compartment regional depot warehouses across South India. Operating under strict statutory compliance with valid <strong>FSSAI License {assurance.fssaiNumber || 'Not Available'}</strong> and <strong>GSTIN {assurance.gstNumber || 'Not Available'}</strong>.
               </p>
               <ul className="space-y-2 text-xs font-semibold text-[#101010]">
                 <li className="flex items-center gap-2">
@@ -167,7 +167,7 @@ export default function AboutPage({ onNavigate, onOpenPartnerModal }) {
             <ShieldCheck className="w-10 h-10 text-[#D4AF37] mx-auto" />
             <h3 className="font-editorial font-bold text-lg text-[#101010]">Statutory Compliance Monitored</h3>
             <p className="text-xs font-mono text-[#343434]">
-              FSSAI Central License: {assurance.fssaiNumber || '11322001000845'} | GSTIN: {assurance.gstNumber || '32AAECM4912L1ZT'}
+              FSSAI Central License: <span className={assurance.fssaiNumber ? "font-bold text-[#101010]" : "italic text-neutral-400"}>{assurance.fssaiNumber || 'Not Available'}</span> | GSTIN: <span className={assurance.gstNumber ? "font-bold text-[#101010]" : "italic text-neutral-400"}>{assurance.gstNumber || 'Not Available'}</span>
             </p>
             <p className="text-xs text-[#343434]">
               Certificates added through the Admin Assurance Desk will appear here.
