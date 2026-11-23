@@ -302,5 +302,94 @@
       "coverage": "Palakkad, Coimbatore, Tirupur, Nilgiris",
       "dispatchTime": "Next-Day Interstate Cross-Dock"
     }
+  ],
+  "invoices": [
+    {
+      "id": "INV-2026-001",
+      "invoiceNumber": "MP/26-27/001",
+      "date": "2026-11-20",
+      "dueDate": "2026-12-05",
+      "buyerName": "Calicut Hypermarket Ltd",
+      "buyerContact": "+91 94471 23456",
+      "buyerEmail": "accounts@calicuthyper.com",
+      "buyerGst": "32AAAAA1234A1Z5",
+      "buyerAddress": "Mavoor Road, Kozhikode, Kerala 673004",
+      "warehouseId": "wh-kozhikode",
+      "warehouseName": "Kozhikode Central Mega Depot (HQ)",
+      "items": [
+        {
+          "productId": "mp-101",
+          "name": "Malabar Prime Artisan Dark Chocolates",
+          "sku": "MP-1010",
+          "hsn": "1806",
+          "quantity": 10,
+          "unit": "Master Cartons (240 Units)",
+          "rate": 2040,
+          "gstRate": 18,
+          "amount": 20400
+        },
+        {
+          "productId": "mp-102",
+          "name": "Natural Tender Coconut Water 250ml",
+          "sku": "MP-2020",
+          "hsn": "2202",
+          "quantity": 15,
+          "unit": "Crates (360 Bottles)",
+          "rate": 1100,
+          "gstRate": 12,
+          "amount": 16500
+        }
+      ],
+      "subtotal": 36900,
+      "cgst": 2826,
+      "sgst": 2826,
+      "igst": 0,
+      "taxTotal": 5652,
+      "discount": 1000,
+      "shippingFee": 0,
+      "grandTotal": 41552,
+      "status": "Paid",
+      "paymentMethod": "Bank Transfer (NEFT/RTGS)",
+      "paidAmount": 41552,
+      "notes": "Bank: Federal Bank, A/C: 15240200008899, IFSC: FDRL0001524. Fully settled via UTR #FEDR984210928."
+    },
+    {
+      "id": "INV-2026-002",
+      "invoiceNumber": "MP/26-27/002",
+      "date": "2026-11-22",
+      "dueDate": "2026-12-07",
+      "buyerName": "Cochin Retail Wholesale Hub",
+      "buyerContact": "+91 98460 77889",
+      "buyerEmail": "orders@cochinwholesale.in",
+      "buyerGst": "32BBBBB5678B1Z2",
+      "buyerAddress": "MG Road, Ernakulam, Kochi, Kerala 682016",
+      "warehouseId": "wh-kochi",
+      "warehouseName": "Kochi Reefer & Cold Chain Depot",
+      "items": [
+        {
+          "productId": "mp-103",
+          "name": "Cold-Pressed Mustard Oil 1L",
+          "sku": "MP-3030",
+          "hsn": "1514",
+          "quantity": 25,
+          "unit": "Master Cartons (300 Units)",
+          "rate": 1850,
+          "gstRate": 5,
+          "amount": 46250
+        }
+      ],
+      "subtotal": 46250,
+      "cgst": 1156.25,
+      "sgst": 1156.25,
+      "igst": 0,
+      "taxTotal": 2312.5,
+      "discount": 500,
+      "shippingFee": 350,
+      "grandTotal": 48412.5,
+      "status": "Pending",
+      "paymentMethod": "15-Day Trade Credit",
+      "paidAmount": 0,
+      "notes": "Authorized 15-day wholesale trade credit terms. Payment due by Dec 07, 2026."
+    }
   ]
 }

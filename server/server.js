@@ -1,8 +1,10 @@
+import 'dotenv/config';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { handleApiRequest } from './routes/index.js';
+import { initDb, isConnectedToMongo } from './models/db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -71,6 +73,7 @@ const server = http.createServer(async (req, res) => {
     service: 'Malabar Prime Central Trade Desk Modular Backend API',
     version: '3.0.0',
     port: PORT,
+    database: isConnectedToMongo() ? 'MongoDB Atlas (Connected)' : 'Local JSON File (server/data/db.json)',
     routes: [
       '/api/products',
       '/api/categories',
@@ -97,12 +100,19 @@ server.on('error', (err) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`\n======================================================`);
-  console.log(`🚀 Malabar Prime Backend API Server running on port ${PORT}`);
-  console.log(`📡 Base URL: http://localhost:${PORT}/api/`);
-  console.log(`🛡️  Admin Credential: malabarprime.co@gmail.com / password123`);
-  console.log(`📁 Database: server/data/db.json`);
-  console.log(`⚡ Uploads directory: public/uploads/`);
-  console.log(`======================================================\n`);
-});
+// Initialize Database & Start Server
+async function startServer() {
+  await initDb();
+
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`\n======================================================`);
+    console.log(`🚀 Malabar Prime Backend API Server running on port ${PORT}`);
+    console.log(`📡 Base URL: http://localhost:${PORT}/api/`);
+    console.log(`🛡️  Admin Credential: malabarprime.co@gmail.com / password123`);
+    console.log(`🍃 Database Mode: ${isConnectedToMongo() ? 'MongoDB Atlas (Connected)' : 'Local JSON File (server/data/db.json)'}`);
+    console.log(`⚡ Uploads directory: public/uploads/`);
+    console.log(`======================================================\n`);
+  });
+}
+
+startServer();

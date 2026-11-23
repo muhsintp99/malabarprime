@@ -16,7 +16,7 @@ import BrandWordmark from '../BrandWordmark';
 import { dataService } from '../../services/dataService';
 
 export default function PdfReportView({ 
-  type = 'pricelist', // 'pricelist', 'quotation', 'partners'
+  type = 'pricelist', // 'pricelist', 'quotation', 'partners', 'invoice'
   data = {}, 
   onClose 
 }) {
@@ -55,6 +55,7 @@ export default function PdfReportView({
               {type === 'pricelist' && 'Official Wholesale Price List & Catalog PDF'}
               {type === 'quotation' && `B2B Commercial Proforma Invoice & Quotation (${data.rfq?.id || 'Custom RFQ'})`}
               {type === 'partners' && 'Authorized Distribution Partner Registry PDF'}
+              {type === 'invoice' && `Tax Invoice & Commercial Bill (${data.invoice?.invoiceNumber || data.invoice?.id || 'Invoice'})`}
             </h3>
             <p className="text-xs text-[#F5F0E6]/60 font-mono">
               Ready for high-resolution vector printing or direct "Save as PDF"
@@ -279,6 +280,190 @@ export default function PdfReportView({
                 <p className="text-amber-800">{data.rfq.notes}</p>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ---------------- TYPE 4: GST TAX INVOICE & BILL ---------------- */}
+        {type === 'invoice' && data.invoice && (
+          <div>
+            <div className="flex items-center justify-between border-b-2 border-[#101010] pb-3 mb-6">
+              <div>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300">
+                  FORM GST INV-1 &bull; TAX INVOICE
+                </span>
+                <h2 className="text-xl font-bold uppercase tracking-wide text-[#101010] mt-1 font-editorial">
+                  ORIGINAL FOR RECIPIENT
+                </h2>
+              </div>
+              <div className="text-right">
+                <span className={`inline-block font-mono text-xs font-black uppercase px-3 py-1 rounded border ${
+                  data.invoice.status === 'Paid' 
+                    ? 'bg-emerald-100 text-emerald-800 border-emerald-400'
+                    : data.invoice.status === 'Pending'
+                    ? 'bg-amber-100 text-amber-800 border-amber-400'
+                    : 'bg-red-100 text-red-800 border-red-400'
+                }`}>
+                  PAYMENT: {data.invoice.status}
+                </span>
+              </div>
+            </div>
+
+            {/* Bill Meta: 2 Columns */}
+            <div className="grid grid-cols-2 gap-6 mb-6 pb-6 border-b border-gray-300 text-xs">
+              <div className="space-y-1">
+                <span className="text-[10px] font-mono font-bold text-gray-500 uppercase block">Billed To (Customer / Consignee):</span>
+                <div className="font-bold text-sm text-[#101010]">{data.invoice.buyerName}</div>
+                {data.invoice.buyerAddress && <div className="text-gray-700">{data.invoice.buyerAddress}</div>}
+                {data.invoice.buyerContact && <div className="font-mono text-[11px] text-gray-600">Phone: {data.invoice.buyerContact}</div>}
+                {data.invoice.buyerEmail && <div className="font-mono text-[11px] text-gray-600">Email: {data.invoice.buyerEmail}</div>}
+                <div className="font-mono text-[11px] font-bold text-[#101010] mt-1">
+                  GSTIN / UIN: {data.invoice.buyerGst || 'Unregistered / Retail'}
+                </div>
+              </div>
+
+              <div className="text-right space-y-1.5 font-mono text-xs">
+                <div><strong>Invoice No:</strong> <span className="text-sm font-bold text-[#101010]">{data.invoice.invoiceNumber || data.invoice.id}</span></div>
+                <div><strong>Invoice Date:</strong> {data.invoice.date || currentDate}</div>
+                <div><strong>Due Date:</strong> {data.invoice.dueDate || 'Upon Receipt'}</div>
+                <div><strong>Dispatch Depot:</strong> {data.invoice.warehouseName || 'Central Regional Hub'}</div>
+                <div><strong>Payment Method:</strong> {data.invoice.paymentMethod || 'Bank Transfer (NEFT/RTGS)'}</div>
+                <div><strong>Place of Supply:</strong> Kerala (32)</div>
+              </div>
+            </div>
+
+            {/* Line Items Table */}
+            <table className="w-full text-left border-collapse border border-[#101010] text-[11px] mb-6">
+              <thead>
+                <tr className="bg-[#101010] text-white font-mono uppercase text-[10px]">
+                  <th className="p-2 border border-[#343434]">#</th>
+                  <th className="p-2 border border-[#343434]">Product Description &amp; SKU</th>
+                  <th className="p-2 border border-[#343434]">HSN</th>
+                  <th className="p-2 border border-[#343434] text-center">Qty / Units</th>
+                  <th className="p-2 border border-[#343434] text-right">Rate (₹)</th>
+                  <th className="p-2 border border-[#343434] text-center">GST %</th>
+                  <th className="p-2 border border-[#343434] text-right">Tax (₹)</th>
+                  <th className="p-2 border border-[#343434] text-right">Total (₹)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data.invoice.items || []).map((item, idx) => {
+                  const qty = Number(item.quantity) || 1;
+                  const rate = Number(item.rate) || 0;
+                  const gstPct = Number(item.gstRate) || 0;
+                  const itemSub = qty * rate;
+                  const itemTax = (itemSub * gstPct) / 100;
+                  const itemTotal = itemSub + itemTax;
+                  return (
+                    <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-[#FAF8F5]'}>
+                      <td className="p-2 border border-gray-300 font-mono text-[10px] text-gray-500">{idx + 1}</td>
+                      <td className="p-2 border border-gray-300">
+                        <div className="font-bold text-[#101010]">{item.name}</div>
+                        <div className="text-[10px] font-mono text-gray-500">SKU: {item.sku || 'MP-SKU'}</div>
+                      </td>
+                      <td className="p-2 border border-gray-300 font-mono text-center">{item.hsn || '1806'}</td>
+                      <td className="p-2 border border-gray-300 font-mono font-bold text-center">
+                        {qty} {item.unit ? <span className="text-[9px] font-normal text-gray-600 block">{item.unit}</span> : ''}
+                      </td>
+                      <td className="p-2 border border-gray-300 font-mono text-right">₹{rate.toLocaleString('en-IN')}</td>
+                      <td className="p-2 border border-gray-300 font-mono text-center font-bold">{gstPct}%</td>
+                      <td className="p-2 border border-gray-300 font-mono text-right">₹{itemTax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="p-2 border border-gray-300 font-mono font-bold text-right text-[#101010]">
+                        ₹{itemTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="bg-[#FAF8F5] font-mono text-[11px]">
+                  <td colSpan={6} className="p-2 border border-gray-300 text-right font-bold">Taxable Subtotal:</td>
+                  <td colSpan={2} className="p-2 border border-gray-300 text-right font-bold">
+                    ₹{Number(data.invoice.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                </tr>
+                {Number(data.invoice.cgst || 0) > 0 && (
+                  <tr className="bg-[#FAF8F5] font-mono text-[11px]">
+                    <td colSpan={6} className="p-2 border border-gray-300 text-right">Central GST (CGST):</td>
+                    <td colSpan={2} className="p-2 border border-gray-300 text-right font-medium">
+                      ₹{Number(data.invoice.cgst || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                )}
+                {Number(data.invoice.sgst || 0) > 0 && (
+                  <tr className="bg-[#FAF8F5] font-mono text-[11px]">
+                    <td colSpan={6} className="p-2 border border-gray-300 text-right">State GST (SGST):</td>
+                    <td colSpan={2} className="p-2 border border-gray-300 text-right font-medium">
+                      ₹{Number(data.invoice.sgst || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                )}
+                {Number(data.invoice.igst || 0) > 0 && (
+                  <tr className="bg-[#FAF8F5] font-mono text-[11px]">
+                    <td colSpan={6} className="p-2 border border-gray-300 text-right">Integrated GST (IGST):</td>
+                    <td colSpan={2} className="p-2 border border-gray-300 text-right font-medium">
+                      ₹{Number(data.invoice.igst || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                )}
+                {Number(data.invoice.discount || 0) > 0 && (
+                  <tr className="bg-[#FAF8F5] font-mono text-[11px] text-emerald-800">
+                    <td colSpan={6} className="p-2 border border-gray-300 text-right font-bold">Volume Wholesale Discount:</td>
+                    <td colSpan={2} className="p-2 border border-gray-300 text-right font-bold">
+                      -₹{Number(data.invoice.discount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                )}
+                {Number(data.invoice.shippingFee || 0) > 0 && (
+                  <tr className="bg-[#FAF8F5] font-mono text-[11px]">
+                    <td colSpan={6} className="p-2 border border-gray-300 text-right">Logistics / Freight Delivery Fee:</td>
+                    <td colSpan={2} className="p-2 border border-gray-300 text-right font-medium">
+                      ₹{Number(data.invoice.shippingFee || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                )}
+                <tr className="bg-[#101010] text-white font-mono text-xs">
+                  <td colSpan={6} className="p-2.5 border border-[#343434] text-right font-bold uppercase tracking-wide">
+                    Grand Total Payable (INR):
+                  </td>
+                  <td colSpan={2} className="p-2.5 border border-[#343434] text-right font-black text-sm text-[#D4AF37]">
+                    ₹{Number(data.invoice.grandTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                </tr>
+                {data.invoice.status === 'Paid' && (
+                  <tr className="bg-emerald-50 text-emerald-900 font-mono text-[11px]">
+                    <td colSpan={6} className="p-2 border border-emerald-300 text-right font-bold">Total Amount Paid / Settled:</td>
+                    <td colSpan={2} className="p-2 border border-emerald-300 text-right font-bold">
+                      ₹{Number(data.invoice.paidAmount || data.invoice.grandTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                )}
+              </tfoot>
+            </table>
+
+            {/* Bank Remittance Details & Invoice Notes */}
+            <div className="grid grid-cols-2 gap-6 pt-4 border-t border-gray-300 text-[10px] mb-4">
+              <div>
+                <strong className="block font-bold uppercase mb-1 text-[#101010]">Commercial Terms &amp; Declarations:</strong>
+                <p className="text-gray-700 leading-relaxed mb-2">
+                  {data.invoice.notes || '1. Goods sold are backed by standard FSSAI quality compliance. 2. Disputes subject to Kozhikode judicial jurisdiction. 3. Overdue interest @ 18% p.a. applicable after due date.'}
+                </p>
+                <div className="font-mono text-gray-600 space-y-0.5">
+                  <div>Statutory FSSAI Lic: <strong>{printableFssai}</strong></div>
+                  <div>Corporate GSTIN: <strong>{printableGst}</strong></div>
+                </div>
+              </div>
+
+              <div className="bg-[#FAF8F5] p-3 border border-gray-300 rounded font-mono text-[10px] space-y-1">
+                <strong className="block font-bold uppercase mb-1 text-[#101010] border-b border-gray-300 pb-1">
+                  Official Bank Remittance Node:
+                </strong>
+                <div>Account Name: <strong>Malabar Prime Distributions Pvt Ltd</strong></div>
+                <div>Bank: <strong>Federal Bank Ltd &bull; Mavoor Road Branch</strong></div>
+                <div>Account Number: <strong>15240200008899</strong></div>
+                <div>IFSC Code: <strong>FDRL0001524</strong></div>
+                <div>UPI Commercial VPA: <strong>malabarprime.pay@federal</strong></div>
+              </div>
+            </div>
           </div>
         )}
 

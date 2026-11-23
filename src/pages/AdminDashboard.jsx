@@ -46,7 +46,9 @@ import {
   ScrollText,
   Lock,
   RotateCcw,
-  FilePlus
+  FilePlus,
+  Receipt,
+  CreditCard
 } from 'lucide-react';
 import { dataService, ADMIN_CREDENTIALS } from '../services/dataService';
 import BrandWordmark from '../components/BrandWordmark';
@@ -69,6 +71,18 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
   const [contacts, setContacts] = useState(dataService.getContactMessages());
   const [testimonials, setTestimonials] = useState(dataService.getTestimonials());
   const [assurance, setAssurance] = useState(dataService.getAssurance());
+
+  // Billing & Invoices State
+  const [invoices, setInvoices] = useState(() => dataService.getInvoices());
+  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('all');
+  const [invoiceSearch, setInvoiceSearch] = useState('');
+  const [invoiceSavedToast, setInvoiceSavedToast] = useState(false);
+  const [invoiceItems, setInvoiceItems] = useState([
+    { name: '', sku: '', hsn: '1806', quantity: 1, unit: 'Cases', rate: 0, gstRate: 18 }
+  ]);
+  const [invoiceInterstate, setInvoiceInterstate] = useState(false);
+  const [invoiceDiscount, setInvoiceDiscount] = useState(0);
+  const [invoiceShipping, setInvoiceShipping] = useState(0);
 
   // Product Modal Dynamic Selection States (supports "Other")
   const [productCategoryChoice, setProductCategoryChoice] = useState('');
@@ -150,7 +164,33 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
         setProductBrandChoice(brands[0]?.name || 'MALABAR PRIME');
       }
     }
-  }, [modalType, editingItem, categories, warehouses, brands]);
+
+    if (modalType === 'invoice') {
+      if (editingItem) {
+        setInvoiceItems(editingItem.items && editingItem.items.length > 0 ? [...editingItem.items] : [
+          { name: '', sku: '', hsn: '1806', quantity: 1, unit: 'Cases', rate: 0, gstRate: 18 }
+        ]);
+        setInvoiceInterstate(Boolean(editingItem.igst > 0));
+        setInvoiceDiscount(editingItem.discount || 0);
+        setInvoiceShipping(editingItem.shippingFee || 0);
+      } else {
+        setInvoiceItems([
+          { 
+            name: products[0]?.name || 'Artisan Dark Chocolate Couverture', 
+            sku: products[0]?.sku || 'MP-101', 
+            hsn: '1806', 
+            quantity: 10, 
+            unit: 'Cases', 
+            rate: products[0]?.wholesalePrice || 1200, 
+            gstRate: 18 
+          }
+        ]);
+        setInvoiceInterstate(false);
+        setInvoiceDiscount(0);
+        setInvoiceShipping(0);
+      }
+    }
+  }, [modalType, editingItem, categories, warehouses, brands, products]);
 
   const handleFileUpload = async (file) => {
     if (!file) return;
@@ -189,6 +229,7 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
       });
       setContactForm(dataService.getCompanyContact());
       setPolicies(dataService.getPolicies());
+      setInvoices(dataService.getInvoices());
     });
     return unsubscribe;
   }, []);
@@ -209,6 +250,11 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
     const pendingPartners = partners.filter(p => p.status === 'Pending').length;
     const unreadContacts = contacts.filter(c => c.status === 'Unread').length;
     const newEnquiries = enquiries.filter(e => e.status === 'New').length;
+    const pendingInvoices = invoices.filter(i => i.status === 'Pending' || i.status === 'Overdue').length;
+    const totalBilled = invoices.reduce((sum, i) => sum + (Number(i.grandTotal) || 0), 0);
+    const paidBilled = invoices.filter(i => i.status === 'Paid').reduce((sum, i) => sum + (Number(i.grandTotal) || 0), 0);
+    const pendingReceivables = Math.max(0, totalBilled - paidBilled);
+
     return {
       totalEnquiries: enquiries.length,
       newEnquiries,
@@ -219,9 +265,52 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
       totalProducts: products.length,
       totalCategories: categories.length,
       totalBrands: brands.length,
-      totalWarehouses: warehouses.length
+      totalWarehouses: warehouses.length,
+      totalInvoices: invoices.length,
+      pendingInvoices,
+      totalBilled,
+      paidBilled,
+      pendingReceivables
     };
-  }, [enquiries, partners, contacts, products, categories, brands, warehouses]);
+  }, [enquiries, partners, contacts, products, categories, brands, warehouses, invoices]);
+
+  // Live Invoice Calculation for Modal
+  const invoiceLiveTotals = useMemo(() => {
+    let subtotal = 0;
+    let cgst = 0;
+    let sgst = 0;
+    let igst = 0;
+
+    for (const item of invoiceItems) {
+      const qty = Number(item.quantity) || 1;
+      const rate = Number(item.rate) || 0;
+      const gstPct = Number(item.gstRate) || 0;
+      const itemSub = qty * rate;
+      subtotal += itemSub;
+
+      const itemTax = (itemSub * gstPct) / 100;
+      if (invoiceInterstate) {
+        igst += itemTax;
+      } else {
+        cgst += itemTax / 2;
+        sgst += itemTax / 2;
+      }
+    }
+
+    const taxTotal = cgst + sgst + igst;
+    const numDiscount = Math.max(0, Number(invoiceDiscount) || 0);
+    const numShipping = Math.max(0, Number(invoiceShipping) || 0);
+    const grandTotal = Math.max(0, subtotal + taxTotal - numDiscount + numShipping);
+
+    return {
+      subtotal: Math.round(subtotal * 100) / 100,
+      cgst: Math.round(cgst * 100) / 100,
+      sgst: Math.round(sgst * 100) / 100,
+      igst: Math.round(igst * 100) / 100,
+      taxTotal: Math.round(taxTotal * 100) / 100,
+      grandTotal: Math.round(grandTotal * 100) / 100
+    };
+  }, [invoiceItems, invoiceInterstate, invoiceDiscount, invoiceShipping]);
 
   // --- ASSURANCE SAVE ---
   const handleSaveAssurance = (e) => {
@@ -508,6 +597,125 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
     setTimeout(() => setPolicySavedToast(false), 3500);
   };
 
+  // --- INVOICE CRUD & CONVERSION HANDLERS ---
+  const handleConvertEnquiryToInvoice = (rfq) => {
+    const convertedItems = (rfq.items || []).map(item => ({
+      name: item.name || 'Wholesale Commodity Master Pack',
+      sku: item.sku || 'MP-GENERIC',
+      hsn: '1806',
+      quantity: Number(item.quantity) || 1,
+      unit: 'Cases',
+      rate: Number(item.rate) || 2500,
+      gstRate: 18
+    }));
+
+    const initialInvoice = {
+      isNewFromEnquiry: true,
+      buyerName: rfq.buyerCompany || '',
+      buyerContact: rfq.phone || '',
+      buyerEmail: rfq.email || '',
+      buyerAddress: rfq.location || '',
+      buyerGst: rfq.gstin || '',
+      warehouseName: warehouses[0]?.name || 'Central Regional Hub',
+      items: convertedItems.length > 0 ? convertedItems : [
+        { name: 'Wholesale Commodity Master Pack', sku: 'MP-GENERIC', hsn: '1806', quantity: 1, unit: 'Cases', rate: 2500, gstRate: 18 }
+      ],
+      status: 'Pending',
+      paymentMethod: 'Bank Transfer (NEFT/RTGS)',
+      discount: 0,
+      shippingFee: 0,
+      notes: `Generated from Wholesale RFQ Enquiry ${rfq.id}. Contact person: ${rfq.contactPerson || 'Not Available'}.`
+    };
+
+    setEditingItem(initialInvoice);
+    setInvoiceItems(initialInvoice.items);
+    setInvoiceInterstate(false);
+    setInvoiceDiscount(0);
+    setInvoiceShipping(0);
+    setModalType('invoice');
+  };
+
+  const handleInvoiceItemChange = (index, field, value) => {
+    const newItems = [...invoiceItems];
+    newItems[index] = { ...newItems[index], [field]: value };
+    setInvoiceItems(newItems);
+  };
+
+  const handleInvoiceProductSelect = (index, productId) => {
+    const product = products.find(p => p.id === productId || p.sku === productId);
+    if (!product) return;
+    const newItems = [...invoiceItems];
+    newItems[index] = {
+      ...newItems[index],
+      name: product.name,
+      sku: product.sku || 'MP-GENERIC',
+      rate: Number(product.wholesalePrice || product.price || 0),
+      hsn: product.hsn || '1806'
+    };
+    setInvoiceItems(newItems);
+  };
+
+  const handleAddInvoiceItemRow = () => {
+    setInvoiceItems([
+      ...invoiceItems,
+      { name: '', sku: '', hsn: '1806', quantity: 1, unit: 'Cases', rate: 0, gstRate: 18 }
+    ]);
+  };
+
+  const handleRemoveInvoiceItemRow = (index) => {
+    if (invoiceItems.length <= 1) {
+      alert('At least one item line is required for an invoice.');
+      return;
+    }
+    const newItems = [...invoiceItems];
+    newItems.splice(index, 1);
+    setInvoiceItems(newItems);
+  };
+
+  const handleInvoiceSubmit = (e) => {
+    e.preventDefault();
+    const form = e.target;
+
+    const invoicePayload = {
+      buyerName: form.buyerName.value.trim(),
+      buyerContact: form.buyerContact?.value?.trim() || '',
+      buyerEmail: form.buyerEmail?.value?.trim() || '',
+      buyerGst: form.buyerGst?.value?.trim() || '',
+      buyerAddress: form.buyerAddress?.value?.trim() || '',
+      warehouseName: form.warehouseName?.value || (warehouses[0]?.name || 'Central Regional Hub'),
+      date: form.date?.value || new Date().toISOString().split('T')[0],
+      dueDate: form.dueDate?.value || new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
+      paymentMethod: form.paymentMethod?.value || 'Bank Transfer (NEFT/RTGS)',
+      status: form.status?.value || 'Pending',
+      notes: form.notes?.value?.trim() || '',
+      items: invoiceItems.map(it => ({
+        name: it.name?.trim() || 'Wholesale Commodity Master Pack',
+        sku: it.sku?.trim() || 'MP-GENERIC',
+        hsn: it.hsn?.trim() || '1806',
+        quantity: Math.max(1, Number(it.quantity) || 1),
+        unit: it.unit || 'Cases',
+        rate: Math.max(0, Number(it.rate) || 0),
+        gstRate: Number(it.gstRate) || 18,
+        amount: (Math.max(1, Number(it.quantity) || 1)) * (Math.max(0, Number(it.rate) || 0))
+      })),
+      discount: Math.max(0, Number(invoiceDiscount) || 0),
+      shippingFee: Math.max(0, Number(invoiceShipping) || 0),
+      isInterstate: Boolean(invoiceInterstate)
+    };
+
+    if (editingItem && editingItem.id && !editingItem.isNewFromEnquiry) {
+      dataService.updateInvoice(editingItem.id, invoicePayload);
+    } else {
+      dataService.addInvoice(invoicePayload);
+    }
+
+    setModalType(null);
+    setEditingItem(null);
+    setInvoices(dataService.getInvoices());
+    setInvoiceSavedToast(true);
+    setTimeout(() => setInvoiceSavedToast(false), 3500);
+  };
+
   return (
     <div className="min-h-screen bg-[#0E0E0E] text-[#F5F0E6] flex flex-col antialiased selection:bg-[#D4AF37] selection:text-[#101010]">
       
@@ -647,6 +855,29 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
               }`}>
                 {stats.newEnquiries}
               </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('billing')}
+            className={`flex-shrink-0 md:w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
+              activeTab === 'billing'
+                ? 'bg-[#D4AF37] text-[#101010] font-bold shadow-md'
+                : 'text-[#F5F0E6]/70 hover:bg-[#202020] hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Receipt className="w-4 h-4 flex-shrink-0" />
+              <span className="whitespace-nowrap">Billing &amp; Invoices</span>
+            </div>
+            {stats.pendingInvoices > 0 ? (
+              <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full font-bold ml-2 ${
+                activeTab === 'billing' ? 'bg-[#101010] text-[#D4AF37]' : 'bg-[#D4AF37] text-[#101010]'
+              }`}>
+                {stats.pendingInvoices}
+              </span>
+            ) : (
+              <span className="text-[10px] font-mono opacity-60 ml-2">{invoices.length}</span>
             )}
           </button>
 
@@ -890,7 +1121,7 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
               </div>
 
               {/* KPI Cards Grid */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 
                 <div className="p-5 rounded-xl bg-[#141414] border border-[#2C2C2C] shadow">
                   <div className="flex items-center justify-between text-[#F5F0E6]/60 mb-2">
@@ -926,7 +1157,24 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                   </div>
                 </div>
 
-                <div className="p-5 rounded-xl bg-[#141414] border border-[#2C2C2C] shadow">
+                <div 
+                  onClick={() => setActiveTab('billing')}
+                  className="p-5 rounded-xl bg-[#141414] border border-[#2C2C2C] hover:border-[#D4AF37]/50 shadow transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between text-[#F5F0E6]/60 mb-2">
+                    <span className="text-[11px] font-mono uppercase tracking-wider group-hover:text-[#D4AF37] transition-colors">Trade Billing</span>
+                    <Receipt className="w-4 h-4 text-[#D4AF37]" />
+                  </div>
+                  <div className="text-2xl font-black text-white font-mono">
+                    ₹{stats.totalBilled.toLocaleString('en-IN')}
+                  </div>
+                  <div className="text-[10px] font-mono text-amber-400 mt-1 flex items-center justify-between">
+                    <span>{stats.pendingInvoices} Pending Bills</span>
+                    <ChevronRight className="w-3 h-3 text-[#D4AF37] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </div>
+
+                <div className="p-5 rounded-xl bg-[#141414] border border-[#2C2C2C] shadow col-span-2 lg:col-span-1">
                   <div className="flex items-center justify-between text-[#F5F0E6]/60 mb-2">
                     <span className="text-[11px] font-mono uppercase tracking-wider">Statutory Health</span>
                     <ShieldCheck className={`w-4 h-4 ${assurance.fssaiNumber || assurance.gstNumber ? 'text-emerald-400' : 'text-neutral-500'}`} />
@@ -1361,7 +1609,16 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                             className="px-3 py-1 bg-[#D4AF37] hover:bg-[#b89528] text-[#101010] text-xs font-mono font-bold rounded flex items-center gap-1 transition-colors"
                           >
                             <Printer className="w-3.5 h-3.5" />
-                            <span>Print PDF Invoice</span>
+                            <span>Print PDF</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleConvertEnquiryToInvoice(rfq)}
+                            className="px-3 py-1 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-mono font-bold rounded flex items-center gap-1 transition-colors cursor-pointer"
+                            title="Generate Official Tax Invoice from this Enquiry"
+                          >
+                            <Receipt className="w-3.5 h-3.5" />
+                            <span>Generate Bill</span>
                           </button>
 
                           <button
@@ -1409,6 +1666,362 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
 
                     </div>
                   ))}
+              </div>
+
+            </div>
+          )}
+
+          {/* ---------------- BILLING & INVOICES TAB ---------------- */}
+          {activeTab === 'billing' && (
+            <div className="space-y-6 animate-fadeIn">
+              
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#2C2C2C]">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40">
+                      B2B Trade Accounts &amp; Commercial Ledger
+                    </span>
+                    <span className="text-[10px] font-mono text-[#F5F0E6]/50">
+                      FORM GST INV-1 &bull; Statutory Tax Invoices
+                    </span>
+                  </div>
+                  <h1 className="font-editorial text-2xl sm:text-3xl font-black text-white">
+                    Billing, Tax Invoices &amp; Accounts Receivable
+                  </h1>
+                  <p className="text-xs text-[#F5F0E6]/60 font-medium">
+                    Create, manage, and dispatch formal GST tax invoices, proforma bills, track accounts receivable, and print official bills.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={() => {
+                      setEditingItem(null);
+                      setInvoiceItems([
+                        {
+                          name: products[0]?.name || 'Wholesale Commodity Master Pack',
+                          sku: products[0]?.sku || 'MP-101',
+                          hsn: '1806',
+                          quantity: 10,
+                          unit: 'Cases',
+                          rate: products[0]?.wholesalePrice || 1200,
+                          gstRate: 18
+                        }
+                      ]);
+                      setInvoiceInterstate(false);
+                      setInvoiceDiscount(0);
+                      setInvoiceShipping(0);
+                      setModalType('invoice');
+                    }}
+                    className="px-3.5 py-2 bg-[#D4AF37] hover:bg-[#b89528] text-[#101010] text-xs font-bold font-mono rounded-lg flex items-center gap-1.5 shadow transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Create Tax Invoice</span>
+                  </button>
+
+                  <button
+                    onClick={() => setPdfModalConfig({ type: 'pricelist', data: { products } })}
+                    className="px-3 py-2 bg-[#202020] hover:bg-[#2c2c2c] text-[#F5F0E6] text-xs font-mono font-bold rounded-lg border border-[#343434] flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-[#D4AF37]" />
+                    <span>Price Catalog PDF</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Toast if invoice saved */}
+              {invoiceSavedToast && (
+                <div className="p-3 bg-emerald-950/80 border border-emerald-500/50 rounded-lg text-emerald-300 text-xs font-mono flex items-center gap-2 shadow-lg animate-fadeIn">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  <span>Tax invoice successfully saved and synced with MongoDB Atlas &amp; local ledger!</span>
+                </div>
+              )}
+
+              {/* Financial KPI Strip */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                
+                <div className="p-4 rounded-xl bg-[#141414] border border-[#2C2C2C] shadow">
+                  <div className="flex items-center justify-between text-[#F5F0E6]/60 mb-1">
+                    <span className="text-[10px] font-mono text-[#D4AF37] uppercase tracking-wider">Total Billed</span>
+                    <Receipt className="w-4 h-4 text-[#D4AF37]" />
+                  </div>
+                  <div className="text-2xl font-black text-white font-mono">
+                    ₹{stats.totalBilled.toLocaleString('en-IN')}
+                  </div>
+                  <div className="text-[10px] text-zinc-400 mt-1 font-mono">
+                    Across {stats.totalInvoices} trade invoices
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-[#141414] border border-[#2C2C2C] shadow">
+                  <div className="flex items-center justify-between text-[#F5F0E6]/60 mb-1">
+                    <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-wider">Collected / Paid</span>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <div className="text-2xl font-black text-white font-mono">
+                    ₹{stats.paidBilled.toLocaleString('en-IN')}
+                  </div>
+                  <div className="text-[10px] text-emerald-400 mt-1 font-mono">
+                    Settled remittances
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-[#141414] border border-[#2C2C2C] shadow">
+                  <div className="flex items-center justify-between text-[#F5F0E6]/60 mb-1">
+                    <span className="text-[10px] font-mono text-amber-400 uppercase tracking-wider">Outstanding Due</span>
+                    <Clock className="w-4 h-4 text-amber-400" />
+                  </div>
+                  <div className="text-2xl font-black text-white font-mono">
+                    ₹{stats.pendingReceivables.toLocaleString('en-IN')}
+                  </div>
+                  <div className="text-[10px] text-amber-400 mt-1 font-mono">
+                    {stats.pendingInvoices} invoices awaiting payment
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-[#141414] border border-[#2C2C2C] shadow">
+                  <div className="flex items-center justify-between text-[#F5F0E6]/60 mb-1">
+                    <span className="text-[10px] font-mono text-[#D4AF37] uppercase tracking-wider">Active Depots</span>
+                    <Building2 className="w-4 h-4 text-[#D4AF37]" />
+                  </div>
+                  <div className="text-2xl font-black text-white font-mono">
+                    {warehouses.length} Hubs
+                  </div>
+                  <div className="text-[10px] text-zinc-400 mt-1 font-mono">
+                    Dispatching with GST Form INV-1
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Status Filters & Search */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-1 bg-[#141414] p-1 rounded-lg border border-[#2C2C2C] overflow-x-auto hide-horizontal-scrollbar">
+                  {['all', 'Pending', 'Paid', 'Overdue', 'Cancelled'].map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => setInvoiceStatusFilter(status)}
+                      className={`px-3 py-1.5 rounded-md text-xs font-mono capitalize transition-colors cursor-pointer ${
+                        invoiceStatusFilter === status
+                          ? 'bg-[#D4AF37] text-[#101010] font-bold'
+                          : 'text-[#F5F0E6]/70 hover:text-white'
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative flex-1 min-w-[240px] max-w-md">
+                  <Search className="w-3.5 h-3.5 text-[#F5F0E6]/40 absolute left-3 top-3" />
+                  <input
+                    type="text"
+                    value={invoiceSearch}
+                    onChange={(e) => setInvoiceSearch(e.target.value)}
+                    placeholder="Search by Invoice #, Buyer Store, or GSTIN..."
+                    className="w-full pl-9 pr-3 py-2 bg-[#141414] border border-[#2C2C2C] rounded-lg text-xs font-mono text-white focus:outline-none focus:border-[#D4AF37]"
+                  />
+                </div>
+              </div>
+
+              {/* Invoices Table */}
+              <div className="bg-[#141414] border border-[#2C2C2C] rounded-xl overflow-hidden shadow">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="bg-[#1C1C1C] border-b border-[#2C2C2C] font-mono text-[10px] uppercase text-[#F5F0E6]/60">
+                        <th className="p-3.5">Invoice # &amp; Date</th>
+                        <th className="p-3.5">Buyer Store / Consignee</th>
+                        <th className="p-3.5">Dispatch Depot</th>
+                        <th className="p-3.5">Line Items</th>
+                        <th className="p-3.5 text-right">Taxable &amp; GST</th>
+                        <th className="p-3.5 text-right">Grand Total (₹)</th>
+                        <th className="p-3.5 text-center">Status</th>
+                        <th className="p-3.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#262626]">
+                      {invoices
+                        .filter(inv => invoiceStatusFilter === 'all' || (inv.status || '').toLowerCase() === invoiceStatusFilter.toLowerCase())
+                        .filter(inv => !invoiceSearch || (
+                          (inv.invoiceNumber || '').toLowerCase().includes(invoiceSearch.toLowerCase()) ||
+                          (inv.buyerName || '').toLowerCase().includes(invoiceSearch.toLowerCase()) ||
+                          (inv.buyerGst || '').toLowerCase().includes(invoiceSearch.toLowerCase()) ||
+                          (inv.id || '').toLowerCase().includes(invoiceSearch.toLowerCase())
+                        ))
+                        .map((inv) => {
+                          const itemsCount = (inv.items || []).length;
+                          return (
+                            <tr key={inv.id} className="hover:bg-[#1A1A1A] transition-colors">
+                              
+                              {/* Invoice Number & Date */}
+                              <td className="p-3.5 align-top whitespace-nowrap">
+                                <div className="font-mono text-xs font-bold text-[#D4AF37]">{inv.invoiceNumber || inv.id}</div>
+                                <div className="text-[10px] font-mono text-[#F5F0E6]/50 mt-0.5">Date: {inv.date || 'Not Available'}</div>
+                                <div className="text-[10px] font-mono text-[#F5F0E6]/40">Due: {inv.dueDate || 'Upon Receipt'}</div>
+                              </td>
+
+                              {/* Buyer Details */}
+                              <td className="p-3.5 align-top">
+                                <div className="font-bold text-white text-xs">{inv.buyerName}</div>
+                                {inv.buyerAddress && (
+                                  <div className="text-[11px] text-[#F5F0E6]/60 truncate max-w-[220px]">
+                                    {inv.buyerAddress}
+                                  </div>
+                                )}
+                                <div className="text-[10px] font-mono text-[#D4AF37]/80 mt-0.5">
+                                  GSTIN: {inv.buyerGst || 'Not Available'}
+                                </div>
+                                {inv.buyerContact && (
+                                  <div className="text-[10px] font-mono text-[#F5F0E6]/50">
+                                    Tel: {inv.buyerContact}
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* Dispatch Warehouse */}
+                              <td className="p-3.5 align-top font-mono text-[11px] text-[#F5F0E6]/80 whitespace-nowrap">
+                                <div className="flex items-center gap-1.5">
+                                  <Building2 className="w-3.5 h-3.5 text-[#D4AF37] flex-shrink-0" />
+                                  <span>{inv.warehouseName || 'Central Hub'}</span>
+                                </div>
+                                <div className="text-[10px] text-[#F5F0E6]/40 mt-0.5">
+                                  {inv.paymentMethod || 'Bank Transfer'}
+                                </div>
+                              </td>
+
+                              {/* Items Summary */}
+                              <td className="p-3.5 align-top text-xs">
+                                <div className="font-mono text-[11px] text-white">
+                                  {itemsCount} {itemsCount === 1 ? 'Line Item' : 'Line Items'}
+                                </div>
+                                <div className="text-[10px] text-[#F5F0E6]/60 truncate max-w-[180px] font-sans">
+                                  {(inv.items || []).map(i => i.name).join(', ') || 'Commodity Packs'}
+                                </div>
+                              </td>
+
+                              {/* Subtotal & Tax */}
+                              <td className="p-3.5 align-top text-right font-mono whitespace-nowrap">
+                                <div className="text-xs text-[#F5F0E6]/80">
+                                  Sub: ₹{(Number(inv.subtotal) || 0).toLocaleString('en-IN')}
+                                </div>
+                                <div className="text-[10px] text-emerald-400">
+                                  GST: +₹{(Number(inv.taxTotal) || 0).toLocaleString('en-IN')}
+                                </div>
+                                {(inv.discount > 0) && (
+                                  <div className="text-[10px] text-red-400">
+                                    Disc: -₹{Number(inv.discount).toLocaleString('en-IN')}
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* Grand Total */}
+                              <td className="p-3.5 align-top text-right font-mono whitespace-nowrap">
+                                <div className="text-sm font-black text-[#D4AF37]">
+                                  ₹{(Number(inv.grandTotal) || 0).toLocaleString('en-IN')}
+                                </div>
+                                <div className="text-[9px] text-[#F5F0E6]/40 uppercase">
+                                  {inv.status === 'Paid' ? 'Paid in Full' : 'Due Amount'}
+                                </div>
+                              </td>
+
+                              {/* Status Badge & Quick Change */}
+                              <td className="p-3.5 align-top text-center whitespace-nowrap">
+                                <button
+                                  type="button"
+                                  onClick={() => dataService.updateInvoicePaymentStatus(inv.id, inv.status === 'Paid' ? 'Pending' : 'Paid')}
+                                  className={`px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase border transition-all cursor-pointer ${
+                                    inv.status === 'Paid'
+                                      ? 'bg-emerald-950 text-emerald-400 border-emerald-800 hover:bg-emerald-900'
+                                      : inv.status === 'Overdue'
+                                      ? 'bg-red-950 text-red-400 border-red-800 hover:bg-red-900'
+                                      : inv.status === 'Cancelled'
+                                      ? 'bg-gray-800 text-gray-300 border-gray-700'
+                                      : 'bg-amber-950 text-amber-400 border-amber-800 hover:bg-amber-900'
+                                  }`}
+                                  title="Click to toggle Paid/Pending"
+                                >
+                                  {inv.status || 'Pending'}
+                                </button>
+                              </td>
+
+                              {/* Actions */}
+                              <td className="p-3.5 align-top text-right whitespace-nowrap">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  
+                                  {/* Print PDF Invoice */}
+                                  <button
+                                    onClick={() => setPdfModalConfig({ type: 'invoice', data: { invoice: inv } })}
+                                    className="px-2.5 py-1 bg-[#D4AF37] hover:bg-[#b89528] text-[#101010] text-[11px] font-mono font-bold rounded flex items-center gap-1 transition-colors cursor-pointer"
+                                    title="Print Official GST Tax Invoice (PDF)"
+                                  >
+                                    <Printer className="w-3.5 h-3.5" />
+                                    <span>PDF</span>
+                                  </button>
+
+                                  {/* Edit Invoice */}
+                                  <button
+                                    onClick={() => {
+                                      setEditingItem(inv);
+                                      setInvoiceItems(inv.items && inv.items.length > 0 ? [...inv.items] : [
+                                        { name: '', sku: '', hsn: '1806', quantity: 1, unit: 'Cases', rate: 0, gstRate: 18 }
+                                      ]);
+                                      setInvoiceInterstate(Boolean(inv.igst > 0));
+                                      setInvoiceDiscount(inv.discount || 0);
+                                      setInvoiceShipping(inv.shippingFee || 0);
+                                      setModalType('invoice');
+                                    }}
+                                    className="p-1.5 bg-[#202020] hover:bg-[#343434] text-white rounded transition-colors cursor-pointer"
+                                    title="Edit Invoice Details"
+                                  >
+                                    <Edit className="w-3.5 h-3.5 text-[#D4AF37]" />
+                                  </button>
+
+                                  {/* Delete Invoice */}
+                                  <button
+                                    onClick={() => {
+                                      if (confirm(`Are you sure you want to delete invoice ${inv.invoiceNumber || inv.id}?`)) {
+                                        dataService.deleteInvoice(inv.id);
+                                        setInvoices(dataService.getInvoices());
+                                      }
+                                    }}
+                                    className="p-1.5 bg-[#202020] hover:bg-red-900 text-red-400 hover:text-white rounded transition-colors cursor-pointer"
+                                    title="Delete invoice record"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+
+                                </div>
+                              </td>
+
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Empty State */}
+                {invoices.length === 0 && (
+                  <div className="p-12 text-center space-y-3">
+                    <Receipt className="w-12 h-12 text-[#D4AF37]/50 mx-auto" />
+                    <h3 className="font-bold text-white text-base">No Tax Invoices Found</h3>
+                    <p className="text-xs text-[#F5F0E6]/60 max-w-sm mx-auto font-sans">
+                      No commercial bills have been created yet. Click "+ Create Tax Invoice" to generate your first official GST billing record.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setEditingItem(null);
+                        setModalType('invoice');
+                      }}
+                      className="px-4 py-2 bg-[#D4AF37] hover:bg-[#b89528] text-[#101010] text-xs font-bold font-mono rounded-lg inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Create First Tax Invoice</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
             </div>
@@ -3661,6 +4274,491 @@ export default function AdminDashboard({ onLogout, onNavigatePublic }) {
                   Add Certification
                 </button>
               </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 6. TAX INVOICE & BILLING MODAL */}
+      {modalType === 'invoice' && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fadeIn">
+          <div className="bg-[#141414] border-2 border-[#D4AF37]/50 rounded-2xl max-w-4xl w-full p-5 sm:p-7 text-white max-h-[92vh] overflow-y-auto shadow-2xl admin-scroll">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-[#262626] pb-4 mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[#D4AF37]/20 border border-[#D4AF37]/40 flex items-center justify-center text-[#D4AF37]">
+                  <Receipt className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-editorial text-xl font-bold text-white">
+                    {editingItem && !editingItem.isNewFromEnquiry 
+                      ? `Edit Tax Invoice (${editingItem.invoiceNumber || editingItem.id})` 
+                      : 'Create Commercial GST Tax Invoice'}
+                  </h3>
+                  <p className="text-xs text-[#F5F0E6]/60 font-mono">
+                    FORM GST INV-1 &bull; B2B Wholesale Trade Accounting
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => { setModalType(null); setEditingItem(null); }} 
+                className="text-[#F5F0E6]/60 hover:text-white p-1 rounded-lg hover:bg-[#202020] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleInvoiceSubmit} className="space-y-6 text-xs font-mono">
+              
+              {/* SECTION 1: BUYER DETAILS */}
+              <div className="p-4 bg-[#181818] border border-[#2C2C2C] rounded-xl space-y-4">
+                <div className="flex items-center gap-2 border-b border-[#262626] pb-2 text-[#D4AF37] font-bold text-xs uppercase tracking-wider">
+                  <Store className="w-4 h-4" />
+                  <span>1. Buyer Store / Consignee Details</span>
+                </div>
+
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="sm:col-span-2 lg:col-span-1">
+                    <label className="text-[#D4AF37] block mb-1">Buyer Store / Business Name *</label>
+                    <input 
+                      name="buyerName" 
+                      required 
+                      defaultValue={editingItem?.buyerName || ''} 
+                      placeholder="e.g. Grand Hypermarket &amp; Retail Ltd" 
+                      className="w-full p-2.5 bg-[#1C1C1C] border border-[#343434] rounded text-white font-sans text-xs focus:outline-none focus:border-[#D4AF37]" 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[#D4AF37] block mb-1">Contact Phone Number</label>
+                    <input 
+                      name="buyerContact" 
+                      defaultValue={editingItem?.buyerContact || ''} 
+                      placeholder="e.g. +91 98470 12345" 
+                      className="w-full p-2.5 bg-[#1C1C1C] border border-[#343434] rounded text-white text-xs focus:outline-none focus:border-[#D4AF37]" 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[#D4AF37] block mb-1">Buyer Email</label>
+                    <input 
+                      name="buyerEmail" 
+                      type="email"
+                      defaultValue={editingItem?.buyerEmail || ''} 
+                      placeholder="e.g. accounts@supermarket.in" 
+                      className="w-full p-2.5 bg-[#1C1C1C] border border-[#343434] rounded text-white text-xs focus:outline-none focus:border-[#D4AF37]" 
+                    />
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[#D4AF37] block mb-1">Buyer GSTIN / UIN</label>
+                    <input 
+                      name="buyerGst" 
+                      defaultValue={editingItem?.buyerGst || ''} 
+                      placeholder="e.g. 32AABCU9603R1ZM (or leave blank if retail)" 
+                      className="w-full p-2.5 bg-[#1C1C1C] border border-[#343434] rounded text-white font-mono text-xs focus:outline-none focus:border-[#D4AF37] uppercase" 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[#D4AF37] block mb-1">Delivery / Billing Address</label>
+                    <input 
+                      name="buyerAddress" 
+                      defaultValue={editingItem?.buyerAddress || ''} 
+                      placeholder="e.g. Kozhikode Bypass Road, Kerala 673004" 
+                      className="w-full p-2.5 bg-[#1C1C1C] border border-[#343434] rounded text-white font-sans text-xs focus:outline-none focus:border-[#D4AF37]" 
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 2: DISPATCH & PAYMENT LOGISTICS */}
+              <div className="p-4 bg-[#181818] border border-[#2C2C2C] rounded-xl space-y-4">
+                <div className="flex items-center gap-2 border-b border-[#262626] pb-2 text-[#D4AF37] font-bold text-xs uppercase tracking-wider">
+                  <Truck className="w-4 h-4" />
+                  <span>2. Dispatch Hub, Schedule &amp; Terms</span>
+                </div>
+
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div>
+                    <label className="text-[#D4AF37] block mb-1">Fulfillment Depot *</label>
+                    <select 
+                      name="warehouseName" 
+                      defaultValue={editingItem?.warehouseName || warehouses[0]?.name || 'Central Regional Hub'} 
+                      className="w-full p-2.5 bg-[#1C1C1C] border border-[#343434] rounded text-white text-xs focus:outline-none focus:border-[#D4AF37]"
+                    >
+                      {warehouses.map(w => (
+                        <option key={w.id} value={w.name}>{w.name} ({w.city})</option>
+                      ))}
+                      {warehouses.length === 0 && (
+                        <option value="Central Regional Hub">Central Regional Hub</option>
+                      )}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[#D4AF37] block mb-1">Invoice Date *</label>
+                    <input 
+                      name="date" 
+                      type="date"
+                      required
+                      defaultValue={editingItem?.date || new Date().toISOString().split('T')[0]} 
+                      className="w-full p-2.5 bg-[#1C1C1C] border border-[#343434] rounded text-white text-xs focus:outline-none focus:border-[#D4AF37]" 
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[#D4AF37] block mb-1">Due Date</label>
+                    <input 
+                      name="dueDate" 
+                      type="date"
+                      defaultValue={editingItem?.dueDate || new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0]} 
+                      className="w-full p-2.5 bg-[#1C1C1C] border border-[#343434] rounded text-white text-xs focus:outline-none focus:border-[#D4AF37]" 
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[#D4AF37] block mb-1">Payment Method</label>
+                    <select 
+                      name="paymentMethod" 
+                      defaultValue={editingItem?.paymentMethod || 'Bank Transfer (NEFT/RTGS)'} 
+                      className="w-full p-2.5 bg-[#1C1C1C] border border-[#343434] rounded text-white text-xs focus:outline-none focus:border-[#D4AF37]"
+                    >
+                      <option value="Bank Transfer (NEFT/RTGS)">Bank Transfer (NEFT/RTGS)</option>
+                      <option value="Direct UPI Commercial Remittance">Direct UPI Commercial Remittance</option>
+                      <option value="Corporate Cheque">Corporate Cheque</option>
+                      <option value="Letter of Credit (LC)">Letter of Credit (LC)</option>
+                      <option value="Cash on Delivery (COD)">Cash on Delivery (COD)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[#D4AF37] block mb-1">Payment Status *</label>
+                    <select 
+                      name="status" 
+                      defaultValue={editingItem?.status || 'Pending'} 
+                      className="w-full p-2.5 bg-[#1C1C1C] border border-[#343434] rounded text-white text-xs focus:outline-none focus:border-[#D4AF37]"
+                    >
+                      <option value="Pending">Pending (Payment Awaited)</option>
+                      <option value="Paid">Paid (Full Settlement Received)</option>
+                      <option value="Overdue">Overdue (Past Credit Term)</option>
+                      <option value="Cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2 pt-6">
+                    <input 
+                      type="checkbox"
+                      id="invoiceInterstateCheck"
+                      checked={invoiceInterstate}
+                      onChange={(e) => setInvoiceInterstate(e.target.checked)}
+                      className="rounded border-[#343434] bg-[#141414] text-[#D4AF37] focus:ring-0 w-4 h-4 cursor-pointer"
+                    />
+                    <label htmlFor="invoiceInterstateCheck" className="text-xs text-[#F5F0E6] cursor-pointer select-none">
+                      <span className="font-bold text-[#D4AF37]">Inter-State Supply (IGST)</span>
+                      <span className="text-[10px] text-zinc-400 block">Check if recipient store is outside Kerala (applies 100% IGST instead of CGST+SGST)</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 3: DYNAMIC LINE ITEMS */}
+              <div className="p-4 bg-[#181818] border border-[#2C2C2C] rounded-xl space-y-4">
+                <div className="flex items-center justify-between border-b border-[#262626] pb-2">
+                  <div className="flex items-center gap-2 text-[#D4AF37] font-bold text-xs uppercase tracking-wider">
+                    <Package className="w-4 h-4" />
+                    <span>3. Invoiced Line Items ({invoiceItems.length})</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddInvoiceItemRow}
+                    className="px-3 py-1 bg-[#D4AF37] hover:bg-[#b89528] text-[#101010] text-[11px] font-bold font-mono rounded flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Item</span>
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {invoiceItems.map((item, idx) => {
+                    const rowQty = Number(item.quantity) || 1;
+                    const rowRate = Number(item.rate) || 0;
+                    const rowGst = Number(item.gstRate) || 18;
+                    const rowTotal = rowQty * rowRate * (1 + rowGst / 100);
+
+                    return (
+                      <div key={idx} className="p-3 bg-[#1C1C1C] border border-[#303030] rounded-lg space-y-3">
+                        
+                        {/* Quick Autofill Selector from Catalog */}
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                            <span className="text-[10px] font-bold text-[#D4AF37] uppercase">Autofill:</span>
+                            <select
+                              onChange={(e) => {
+                                if (e.target.value) handleInvoiceProductSelect(idx, e.target.value);
+                              }}
+                              defaultValue=""
+                              className="flex-1 p-1.5 bg-[#141414] border border-[#343434] rounded text-white text-[11px] focus:outline-none focus:border-[#D4AF37]"
+                            >
+                              <option value="">-- Choose from Master Catalog --</option>
+                              {products.map(p => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name} ({p.sku}) &bull; ₹{p.wholesalePrice || p.price}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-[#D4AF37]">
+                              Row Total: ₹{Math.round(rowTotal).toLocaleString('en-IN')}
+                            </span>
+                            {invoiceItems.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveInvoiceItemRow(idx)}
+                                className="p-1 hover:bg-red-950 text-red-400 rounded transition-colors"
+                                title="Remove line item"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Item Details Row */}
+                        <div className="grid sm:grid-cols-12 gap-2 text-xs">
+                          
+                          <div className="sm:col-span-4">
+                            <label className="text-[10px] text-zinc-400 block mb-0.5">Description *</label>
+                            <input
+                              type="text"
+                              required
+                              value={item.name}
+                              onChange={(e) => handleInvoiceItemChange(idx, 'name', e.target.value)}
+                              placeholder="Product Title"
+                              className="w-full p-2 bg-[#121212] border border-[#343434] rounded text-white text-xs font-sans"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-2">
+                            <label className="text-[10px] text-zinc-400 block mb-0.5">SKU Code</label>
+                            <input
+                              type="text"
+                              value={item.sku}
+                              onChange={(e) => handleInvoiceItemChange(idx, 'sku', e.target.value)}
+                              placeholder="MP-101"
+                              className="w-full p-2 bg-[#121212] border border-[#343434] rounded text-white text-xs font-mono"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-1">
+                            <label className="text-[10px] text-zinc-400 block mb-0.5">HSN</label>
+                            <input
+                              type="text"
+                              value={item.hsn || '1806'}
+                              onChange={(e) => handleInvoiceItemChange(idx, 'hsn', e.target.value)}
+                              placeholder="1806"
+                              className="w-full p-2 bg-[#121212] border border-[#343434] rounded text-white text-xs font-mono text-center"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-1">
+                            <label className="text-[10px] text-zinc-400 block mb-0.5">Qty *</label>
+                            <input
+                              type="number"
+                              min="1"
+                              required
+                              value={item.quantity}
+                              onChange={(e) => handleInvoiceItemChange(idx, 'quantity', e.target.value)}
+                              className="w-full p-2 bg-[#121212] border border-[#343434] rounded text-white text-xs font-mono text-center"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-1">
+                            <label className="text-[10px] text-zinc-400 block mb-0.5">Unit</label>
+                            <select
+                              value={item.unit || 'Cases'}
+                              onChange={(e) => handleInvoiceItemChange(idx, 'unit', e.target.value)}
+                              className="w-full p-2 bg-[#121212] border border-[#343434] rounded text-white text-xs font-mono"
+                            >
+                              <option value="Cases">Cases</option>
+                              <option value="Cartons">Cartons</option>
+                              <option value="Kg">Kg</option>
+                              <option value="Packs">Packs</option>
+                              <option value="Units">Units</option>
+                            </select>
+                          </div>
+
+                          <div className="sm:col-span-2">
+                            <label className="text-[10px] text-zinc-400 block mb-0.5">Rate (₹) *</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              required
+                              value={item.rate}
+                              onChange={(e) => handleInvoiceItemChange(idx, 'rate', e.target.value)}
+                              className="w-full p-2 bg-[#121212] border border-[#343434] rounded text-white text-xs font-mono text-right"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-1">
+                            <label className="text-[10px] text-zinc-400 block mb-0.5">GST %</label>
+                            <select
+                              value={item.gstRate || 18}
+                              onChange={(e) => handleInvoiceItemChange(idx, 'gstRate', e.target.value)}
+                              className="w-full p-2 bg-[#121212] border border-[#343434] rounded text-white text-xs font-mono text-center"
+                            >
+                              <option value="0">0%</option>
+                              <option value="5">5%</option>
+                              <option value="12">12%</option>
+                              <option value="18">18%</option>
+                              <option value="28">28%</option>
+                            </select>
+                          </div>
+
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* SECTION 4: DISCOUNTS, SHIPPING & LIVE TOTALS */}
+              <div className="grid sm:grid-cols-2 gap-4">
+                
+                {/* Adjustments & Notes */}
+                <div className="p-4 bg-[#181818] border border-[#2C2C2C] rounded-xl space-y-3">
+                  <div className="text-[11px] font-bold text-[#D4AF37] uppercase tracking-wider">
+                    Commercial Adjustments &amp; Notes
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-zinc-400 block mb-1">Discount (₹)</label>
+                      <input 
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={invoiceDiscount}
+                        onChange={(e) => setInvoiceDiscount(e.target.value)}
+                        placeholder="0"
+                        className="w-full p-2.5 bg-[#1C1C1C] border border-[#343434] rounded text-white font-mono text-xs focus:outline-none focus:border-[#D4AF37]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-zinc-400 block mb-1">Reefer Freight (₹)</label>
+                      <input 
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={invoiceShipping}
+                        onChange={(e) => setInvoiceShipping(e.target.value)}
+                        placeholder="0"
+                        className="w-full p-2.5 bg-[#1C1C1C] border border-[#343434] rounded text-white font-mono text-xs focus:outline-none focus:border-[#D4AF37]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-zinc-400 block mb-1">Terms / Payment Instructions</label>
+                    <textarea 
+                      name="notes" 
+                      rows={3} 
+                      defaultValue={editingItem?.notes || 'Goods once dispatched are governed by standard FSSAI quality assurance. Payment via RTGS/NEFT/UPI.'} 
+                      placeholder="Special delivery instructions, RTGS accounts, etc." 
+                      className="w-full p-2.5 bg-[#1C1C1C] border border-[#343434] rounded text-white font-sans text-xs focus:outline-none focus:border-[#D4AF37] leading-relaxed" 
+                    />
+                  </div>
+                </div>
+
+                {/* Live Real-Time Financial Summary */}
+                <div className="p-4 bg-[#181818] border-2 border-[#D4AF37]/40 rounded-xl space-y-3 flex flex-col justify-between shadow-lg">
+                  <div>
+                    <div className="text-[11px] font-bold text-[#D4AF37] uppercase tracking-wider pb-2 border-b border-[#2C2C2C] flex items-center justify-between">
+                      <span>Live Invoice Computation</span>
+                      <span className="text-[9px] font-mono text-emerald-400 uppercase bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
+                        Auto-Calculated
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 py-3 text-xs font-mono">
+                      <div className="flex justify-between text-[#F5F0E6]/80">
+                        <span>Items Subtotal:</span>
+                        <span>₹{invoiceLiveTotals.subtotal.toLocaleString('en-IN')}</span>
+                      </div>
+
+                      {invoiceInterstate ? (
+                        <div className="flex justify-between text-emerald-400">
+                          <span>Integrated GST (IGST):</span>
+                          <span>+₹{invoiceLiveTotals.igst.toLocaleString('en-IN')}</span>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-between text-emerald-400 text-[11px]">
+                            <span>Central GST (CGST 50%):</span>
+                            <span>+₹{invoiceLiveTotals.cgst.toLocaleString('en-IN')}</span>
+                          </div>
+                          <div className="flex justify-between text-emerald-400 text-[11px]">
+                            <span>State GST (SGST 50%):</span>
+                            <span>+₹{invoiceLiveTotals.sgst.toLocaleString('en-IN')}</span>
+                          </div>
+                        </>
+                      )}
+
+                      {Number(invoiceDiscount) > 0 && (
+                        <div className="flex justify-between text-red-400">
+                          <span>Trade Discount:</span>
+                          <span>-₹{Number(invoiceDiscount).toLocaleString('en-IN')}</span>
+                        </div>
+                      )}
+
+                      {Number(invoiceShipping) > 0 && (
+                        <div className="flex justify-between text-[#F5F0E6]/80">
+                          <span>Reefer Cold-Chain Logistics:</span>
+                          <span>+₹{Number(invoiceShipping).toLocaleString('en-IN')}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t-2 border-[#D4AF37]/50 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#D4AF37] block">
+                        Net Amount Payable
+                      </span>
+                      <span className="text-[9px] text-[#F5F0E6]/50">Inclusive of all taxes &amp; logistics</span>
+                    </div>
+                    <div className="text-2xl font-black text-[#D4AF37] font-mono">
+                      ₹{invoiceLiveTotals.grandTotal.toLocaleString('en-IN')}
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-[#262626]">
+                <button 
+                  type="button" 
+                  onClick={() => { setModalType(null); setEditingItem(null); }} 
+                  className="px-4 py-2.5 bg-[#202020] hover:bg-[#2C2C2C] text-white rounded-lg cursor-pointer transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-6 py-2.5 bg-[#D4AF37] hover:bg-[#b89528] text-[#101010] font-bold rounded-lg cursor-pointer transition-colors shadow-lg flex items-center gap-2"
+                >
+                  <Receipt className="w-4 h-4" />
+                  <span>{editingItem && !editingItem.isNewFromEnquiry ? 'Save Invoice Updates' : 'Generate & Issue Tax Invoice'}</span>
+                </button>
+              </div>
+
             </form>
           </div>
         </div>

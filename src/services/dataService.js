@@ -19,6 +19,14 @@ const INITIAL_PARTNER_APPLICATIONS = [];
 const INITIAL_CONTACT_MESSAGES = [];
 const INITIAL_CERTIFICATIONS = [];
 
+// Base API URL resolver: supports VITE_API_URL or relative /api
+export const getApiBase = () => {
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) {
+    return String(import.meta.env.VITE_API_URL).replace(/\/$/, '');
+  }
+  return '';
+};
+
 // Helper to load from localStorage with fallback
 const loadFromStorage = (key, fallback) => {
   try {
@@ -41,6 +49,10 @@ const saveToStorage = (key, value) => {
 class DataService {
   constructor() {
     this.listeners = new Set();
+    this.backendConnected = false;
+    this.isSyncing = false;
+    this.lastSyncedAt = null;
+
     if (typeof window !== 'undefined') {
       const isCleaned = localStorage.getItem('mp_v3_clean_synced');
       if (!isCleaned) {
@@ -65,28 +77,66 @@ class DataService {
       }
     }
     this.init();
+
     if (typeof window !== 'undefined') {
+      // 1. Initial backend sync
       this.syncWithBackend();
+
+      // 2. Auto-sync on window focus & online event (e.g. user returns to tab)
+      window.addEventListener('focus', () => this.syncWithBackend());
+      window.addEventListener('online', () => this.syncWithBackend());
+
+      // 3. Gentle background sync every 25 seconds when page is active
+      setInterval(() => {
+        if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+          this.syncWithBackend();
+        }
+      }, 25000);
     }
   }
 
-  async syncWithBackend() {
-    try {
-      const statsRes = await fetch('/api/stats');
-      if (!statsRes.ok) return;
+  isBackendConnected() {
+    return this.backendConnected;
+  }
 
-      const [pRes, cRes, bRes, eRes, partRes, contRes, tRes, aRes, compRes, polRes, whRes] = await Promise.all([
-        fetch('/api/products').then(r => r.json()).catch(() => ({})),
-        fetch('/api/categories').then(r => r.json()).catch(() => ({})),
-        fetch('/api/brands').then(r => r.json()).catch(() => ({})),
-        fetch('/api/enquiries').then(r => r.json()).catch(() => ({})),
-        fetch('/api/partners').then(r => r.json()).catch(() => ({})),
-        fetch('/api/contacts').then(r => r.json()).catch(() => ({})),
-        fetch('/api/testimonials').then(r => r.json()).catch(() => ({})),
-        fetch('/api/assurance').then(r => r.json()).catch(() => ({})),
-        fetch('/api/company/contact').then(r => r.json()).catch(() => ({})),
-        fetch('/api/policies').then(r => r.json()).catch(() => ({})),
-        fetch('/api/warehouses').then(r => r.json()).catch(() => ({}))
+  getLastSyncedAt() {
+    return this.lastSyncedAt;
+  }
+
+  async refresh() {
+    await this.syncWithBackend();
+    return {
+      connected: this.backendConnected,
+      lastSyncedAt: this.lastSyncedAt,
+      productsCount: this.products.length,
+      warehousesCount: this.warehouses.length
+    };
+  }
+
+  async syncWithBackend(isRetry = false) {
+    if (this.isSyncing) return;
+    this.isSyncing = true;
+    const base = getApiBase();
+
+    try {
+      const statsRes = await fetch(`${base}/api/stats`, { cache: 'no-cache' });
+      if (!statsRes.ok) {
+        throw new Error(`Stats endpoint responded with HTTP ${statsRes.status}`);
+      }
+
+      const [pRes, cRes, bRes, eRes, partRes, contRes, tRes, aRes, compRes, polRes, whRes, invRes] = await Promise.all([
+        fetch(`${base}/api/products`, { cache: 'no-cache' }).then(r => r.json()).catch(() => ({})),
+        fetch(`${base}/api/categories`, { cache: 'no-cache' }).then(r => r.json()).catch(() => ({})),
+        fetch(`${base}/api/brands`, { cache: 'no-cache' }).then(r => r.json()).catch(() => ({})),
+        fetch(`${base}/api/enquiries`, { cache: 'no-cache' }).then(r => r.json()).catch(() => ({})),
+        fetch(`${base}/api/partners`, { cache: 'no-cache' }).then(r => r.json()).catch(() => ({})),
+        fetch(`${base}/api/contacts`, { cache: 'no-cache' }).then(r => r.json()).catch(() => ({})),
+        fetch(`${base}/api/testimonials`, { cache: 'no-cache' }).then(r => r.json()).catch(() => ({})),
+        fetch(`${base}/api/assurance`, { cache: 'no-cache' }).then(r => r.json()).catch(() => ({})),
+        fetch(`${base}/api/company/contact`, { cache: 'no-cache' }).then(r => r.json()).catch(() => ({})),
+        fetch(`${base}/api/policies`, { cache: 'no-cache' }).then(r => r.json()).catch(() => ({})),
+        fetch(`${base}/api/warehouses`, { cache: 'no-cache' }).then(r => r.json()).catch(() => ({})),
+        fetch(`${base}/api/invoices`, { cache: 'no-cache' }).then(r => r.json()).catch(() => ({}))
       ]);
 
       if (pRes.data && Array.isArray(pRes.data)) { this.products = pRes.data; saveToStorage('products', this.products); }
@@ -100,23 +150,40 @@ class DataService {
       if (compRes.data && typeof compRes.data === 'object') { this.companyContact = compRes.data; saveToStorage('company_contact', this.companyContact); }
       if (polRes.data && typeof polRes.data === 'object') { this.policies = polRes.data; saveToStorage('policies', this.policies); }
       if (whRes.data && Array.isArray(whRes.data)) { this.warehouses = whRes.data; saveToStorage('warehouses', this.warehouses); }
+      if (invRes.data && Array.isArray(invRes.data)) { this.invoices = invRes.data; saveToStorage('invoices', this.invoices); }
 
+      this.backendConnected = true;
+      this.lastSyncedAt = new Date();
       this.notify();
     } catch (e) {
-      // Backend not yet reachable or in build mode, using storage fallback
+      this.backendConnected = false;
+      // Auto-retry with backoff if server is cold-starting (e.g. Render spin-up)
+      if (!isRetry && typeof window !== 'undefined') {
+        setTimeout(() => this.syncWithBackend(true), 3500);
+      }
+    } finally {
+      this.isSyncing = false;
     }
   }
 
   // Safe async API caller
-  apiCall(endpoint, method = 'GET', body = null) {
-    if (typeof window === 'undefined') return;
+  async apiCall(endpoint, method = 'GET', body = null) {
+    if (typeof window === 'undefined') return null;
+    const base = getApiBase();
     try {
-      fetch(endpoint, {
+      const res = await fetch(`${base}${endpoint}`, {
         method,
         headers: body ? { 'Content-Type': 'application/json' } : {},
         body: body ? JSON.stringify(body) : undefined
-      }).catch(() => {});
-    } catch (e) {}
+      });
+      if (res.ok) {
+        this.backendConnected = true;
+      }
+      return await res.json().catch(() => null);
+    } catch (e) {
+      console.warn(`[DataService API Warning] ${method} ${endpoint} notice:`, e.message);
+      return null;
+    }
   }
 
   init() {
@@ -150,6 +217,7 @@ class DataService {
     });
     this.policies = loadFromStorage('policies', INITIAL_POLICIES);
     this.warehouses = loadFromStorage('warehouses', INITIAL_WAREHOUSES);
+    this.invoices = loadFromStorage('invoices', []);
   }
 
   subscribe(listener) {
@@ -520,7 +588,8 @@ class DataService {
         payload = { file: base64, filename: fileOrBase64.name };
       }
 
-      const res = await fetch('/api/upload', {
+      const base = getApiBase();
+      const res = await fetch(`${base}/api/upload`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -663,6 +732,104 @@ class DataService {
     this.warehouses = (this.warehouses || []).filter(w => w.id !== id);
     saveToStorage('warehouses', this.warehouses);
     this.apiCall(`/api/warehouses/${encodeURIComponent(id)}`, 'DELETE');
+    this.notify();
+  }
+
+  // --- BILLING & TAX INVOICES ---
+  getInvoices() {
+    return [...(this.invoices || [])];
+  }
+
+  getInvoice(id) {
+    return (this.invoices || []).find(inv => inv.id === id || inv.invoiceNumber === id) || null;
+  }
+
+  addInvoice(invoiceData) {
+    const currentCount = (this.invoices || []).length;
+    const invId = invoiceData.id || `INV-${Date.now()}`;
+    const invNumber = invoiceData.invoiceNumber || `MP/26-27/${String(currentCount + 1).padStart(3, '0')}`;
+
+    const newInvoice = {
+      id: invId,
+      invoiceNumber: invNumber,
+      date: invoiceData.date || new Date().toISOString().split('T')[0],
+      dueDate: invoiceData.dueDate || new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
+      buyerName: (invoiceData.buyerName || 'Retail Partner').trim(),
+      buyerContact: invoiceData.buyerContact || '',
+      buyerEmail: invoiceData.buyerEmail || '',
+      buyerGst: invoiceData.buyerGst || '',
+      buyerAddress: invoiceData.buyerAddress || '',
+      warehouseId: invoiceData.warehouseId || '',
+      warehouseName: invoiceData.warehouseName || (this.warehouses?.[0]?.name || 'Central Mega Depot'),
+      items: Array.isArray(invoiceData.items) && invoiceData.items.length > 0 ? invoiceData.items : [],
+      subtotal: Number(invoiceData.subtotal) || 0,
+      cgst: Number(invoiceData.cgst) || 0,
+      sgst: Number(invoiceData.sgst) || 0,
+      igst: Number(invoiceData.igst) || 0,
+      taxTotal: Number(invoiceData.taxTotal) || 0,
+      discount: Number(invoiceData.discount) || 0,
+      shippingFee: Number(invoiceData.shippingFee) || 0,
+      grandTotal: Number(invoiceData.grandTotal) || 0,
+      status: invoiceData.status || 'Pending',
+      paymentMethod: invoiceData.paymentMethod || 'Bank Transfer (NEFT/RTGS)',
+      paidAmount: invoiceData.status === 'Paid' ? (Number(invoiceData.grandTotal) || 0) : (Number(invoiceData.paidAmount) || 0),
+      notes: invoiceData.notes || 'Goods once dispatched are governed by standard FSSAI quality assurance.'
+    };
+
+    this.invoices = [newInvoice, ...(this.invoices || [])];
+    saveToStorage('invoices', this.invoices);
+    this.apiCall('/api/invoices', 'POST', newInvoice);
+    this.notify();
+    return newInvoice;
+  }
+
+  updateInvoice(id, updates) {
+    const index = (this.invoices || []).findIndex(inv => inv.id === id);
+    if (index === -1) return null;
+
+    const current = this.invoices[index];
+    const updated = {
+      ...current,
+      ...updates,
+      id: current.id,
+      invoiceNumber: updates.invoiceNumber || current.invoiceNumber
+    };
+
+    if (updates.status === 'Paid' && !updates.paidAmount) {
+      updated.paidAmount = updated.grandTotal;
+    }
+
+    this.invoices[index] = updated;
+    saveToStorage('invoices', this.invoices);
+    this.apiCall(`/api/invoices/${encodeURIComponent(id)}`, 'PUT', updated);
+    this.notify();
+    return updated;
+  }
+
+  updateInvoicePaymentStatus(id, newStatus, paidAmount = null) {
+    const index = (this.invoices || []).findIndex(inv => inv.id === id);
+    if (index === -1) return null;
+
+    const current = this.invoices[index];
+    const finalPaid = newStatus === 'Paid' ? current.grandTotal : (paidAmount !== null ? Number(paidAmount) : current.paidAmount);
+
+    const updated = {
+      ...current,
+      status: newStatus,
+      paidAmount: finalPaid
+    };
+
+    this.invoices[index] = updated;
+    saveToStorage('invoices', this.invoices);
+    this.apiCall(`/api/invoices/${encodeURIComponent(id)}`, 'PUT', { status: newStatus, paidAmount: finalPaid });
+    this.notify();
+    return updated;
+  }
+
+  deleteInvoice(id) {
+    this.invoices = (this.invoices || []).filter(inv => inv.id !== id);
+    saveToStorage('invoices', this.invoices);
+    this.apiCall(`/api/invoices/${encodeURIComponent(id)}`, 'DELETE');
     this.notify();
   }
 }

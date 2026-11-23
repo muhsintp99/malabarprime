@@ -14,6 +14,10 @@ export const statsController = {
       totalCategories: (db.categories || []).length,
       totalBrands: (db.brands || []).length,
       totalWarehouses: (db.warehouses || []).length,
+      totalInvoices: (db.invoices || []).length,
+      paidInvoices: (db.invoices || []).filter(i => i.status === 'Paid').length,
+      pendingInvoices: (db.invoices || []).filter(i => i.status === 'Pending' || i.status === 'Partially Paid').length,
+      totalBilledAmount: (db.invoices || []).reduce((sum, i) => sum + (Number(i.grandTotal) || 0), 0),
       fssaiNumber: db.assurance?.fssaiNumber,
       gstNumber: db.assurance?.gstNumber
     };
